@@ -27,8 +27,11 @@ public final class FhirEngineLoader {
 
     private static final String ENGINE_CLASS = "com.mirth.connect.plugins.datatypes.fhir.engine.HapiFhirEngine";
 
-    /** Always from the parent: the JDK and the interface the engine implements. */
-    private static final String[] PARENT_FIRST = { "java.", "javax.xml.", "jdk.", "sun.", "com.sun.", "org.w3c.", "org.xml.", FhirEngine.class.getName() };
+    /**
+     * Always from the parent: the JDK, the interface the engine implements and the engine's Log4j,
+     * which HAPI's SLF4J logging is routed to (lib/ has the SLF4J-to-Log4j provider).
+     */
+    private static final String[] PARENT_FIRST = { "java.", "javax.xml.", "jdk.", "sun.", "com.sun.", "org.w3c.", "org.xml.", "org.apache.logging.log4j.", FhirEngine.class.getName() };
 
     private static FhirEngine engine;
     private static String error;

@@ -6,7 +6,7 @@
 
   <groupId>com.matthy.oie</groupId>
   <artifactId>datatype-fhir</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <packaging>jar</packaging>
 
   <name>OIE FHIR Data Type</name>
@@ -20,6 +20,8 @@
     <!-- Must match the engine you deploy to. -->
     <oie.version>4.6.0</oie.version>
     <hapi.version>8.12.1</hapi.version>
+    <!-- The engine's Log4j (server-lib/log4j). -->
+    <log4j.version>2.25.3</log4j.version>
   </properties>
 
   <dependencies>
@@ -67,6 +69,20 @@
       <artifactId>hapi-fhir-caching-caffeine</artifactId>
       <version>${hapi.version}</version>
     </dependency>
+    <!--
+      HAPI logs through SLF4J. This provider sends it to the engine's own Log4j (log4j-api and
+      log4j-core come from the engine: see PARENT_FIRST in FhirEngineLoader), so HAPI's warnings and
+      errors end up in the server log. Keep the version equal to the engine's Log4j.
+    -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j2-impl</artifactId>
+      <version>${log4j.version}</version>
+      <exclusions>
+        <exclusion><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-api</artifactId></exclusion>
+        <exclusion><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-core</artifactId></exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
@@ -109,7 +125,7 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
-      <version>2.20.0</version>
+      <version>${log4j.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

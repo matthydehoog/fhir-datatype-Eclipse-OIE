@@ -1,0 +1,20 @@
+{
+  "resourceType": "Patient",
+  "id": "example",
+  "identifier": [
+    {
+      "system": "http://fhir.nl/fhir/NamingSystem/bsn",
+      "value": "999911120"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Jansen",
+      "given": [ "Piet" ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1980-01-01"
+}

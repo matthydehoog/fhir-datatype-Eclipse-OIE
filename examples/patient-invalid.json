@@ -1,0 +1,6 @@
+{
+  "resourceType": "Patient",
+  "gender": "x",
+  "birthDate": "01-01-1980",
+  "shoeSize": 42
+}

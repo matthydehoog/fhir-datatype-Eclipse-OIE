@@ -109,6 +109,10 @@ var json = FhirTools.toJson(msg.toString()); // transformer XML to JSON
 - **Bundles** are one message. There is no batch splitting.
 - **Accept on outbound** does not exist: an invalid outbound message is always rejected, because there is no later step to handle it.
 
+## Examples
+
+[`examples/`](examples) has test messages: a valid and an invalid Patient and a transaction Bundle, plus the 27 Patient examples from build.fhir.org in JSON and XML ([`examples/build.fhir.org-R6`](examples/build.fhir.org-R6)). Those are FHIR R6 examples: 25 are valid against R4, and 2 are rejected for elements that are new in R6.
+
 ## Building
 
 JDK 17 and Maven. The engine jars (`com.mirth.connect:*:4.6.0`) must be in the local Maven repository.

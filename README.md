@@ -16,7 +16,7 @@ FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later wit
 2. In the Administrator: *Settings > Extensions > Install Extension*, or unzip it into `<OIE_HOME>/extensions/`.
 3. Restart the OIE service.
 
-**Memory.** The validator loads the whole FHIR specification: about 300 MB of heap, more with large profile packages. Give the server at least 1 GB (`-Xmx1g` or more in `oieserver.vmoptions` / `oieservice.vmoptions`). The first validation after a deploy takes a few seconds; the plugin starts loading when the channel is deployed, and after that a message takes tens of milliseconds.
+**Memory.** The validator loads the whole FHIR specification: about 300 MB of heap, more with large profile packages. Give the server at least 1 GB: put `-Xmx1g` (or more) on its own line in `<OIE_HOME>/conf/custom.vmoptions` and restart the service. Don't edit `oieserver.vmoptions` or `oieservice.vmoptions`: both include `conf/custom.vmoptions`, so the setting applies to the service and to `oieserver` alike. The first validation after a deploy takes a few seconds; the plugin starts loading when the channel is deployed, and after that a message takes tens of milliseconds.
 
 **Size.** HAPI FHIR and its libraries make the zip about 90 MB. They sit in `extensions/datatype-fhir/lib/` and are loaded in the plugin's own class loader, so they never clash with the libraries OIE ships.
 

@@ -6,7 +6,11 @@
 
 package com.mirth.connect.plugins.datatypes.fhir.server;
 
+import com.mirth.connect.donkey.server.message.AutoResponder;
 import com.mirth.connect.model.datatype.DataTypeDelegate;
+import com.mirth.connect.model.datatype.ResponseGenerationProperties;
+import com.mirth.connect.model.datatype.SerializationProperties;
+import com.mirth.connect.plugins.datatypes.fhir.FhirSerializationProperties;
 import com.mirth.connect.plugins.DataTypeServerPlugin;
 import com.mirth.connect.plugins.datatypes.fhir.FhirDataTypeDelegate;
 
@@ -23,6 +27,12 @@ public class FhirDataTypeServerPlugin extends DataTypeServerPlugin {
 
     @Override
     public void stop() {}
+
+    /** "Auto-generate" source responses: a FHIR OperationOutcome instead of an empty response. */
+    @Override
+    public AutoResponder getAutoResponder(SerializationProperties serializationProperties, ResponseGenerationProperties responseGenerationProperties) {
+        return new FhirAutoResponder(serializationProperties instanceof FhirSerializationProperties ? (FhirSerializationProperties) serializationProperties : null);
+    }
 
     @Override
     protected DataTypeDelegate getDataTypeDelegate() {

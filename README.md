@@ -47,6 +47,7 @@ Inbound validation sets these variables, also when invalid messages are accepted
 | `fhirValid` | `true` or `false` |
 | `fhirIssueCount` | number of errors and warnings |
 | `fhirIssues` | one line per issue: `error Patient.gender (line 1, column 39): ...` |
+| `fhirOperationOutcome` | the issues as a FHIR `OperationOutcome` resource (JSON), ready to return to the sender |
 | `mirth_type` | resource type, e.g. `Patient` or `Bundle` |
 | `mirth_version` | `R4` |
 
@@ -59,6 +60,28 @@ if ($('fhirValid') == false) {
 }
 return true;
 ```
+
+## Responding to the sender
+
+A FHIR client expects an `OperationOutcome` back, and HTTP `400` when it sent something invalid. With the source connector's **Response** set to *Auto-generate (After source transformer)* (or *Before processing* / *Destinations completed*), the data type answers with an `OperationOutcome`, in JSON or XML like the message that came in:
+
+| Situation | OperationOutcome | HTTP status |
+| --- | --- | --- |
+| Rejected as invalid | every error and warning, with its location and line/column | 400 |
+| Accepted | the warnings (and errors, with *Invalid Messages: Accept*), or "The message was accepted." | 200 |
+| Filtered | "The message was filtered and not processed further." | 200 |
+| Any other error (e.g. in a transformer) | the error, with code `exception` | 500 |
+
+The HTTP status and content type are put in the channel map. Use them in the **HTTP Listener** settings:
+
+| HTTP Listener setting | Value |
+| --- | --- |
+| Response Status Code | `${fhirHttpStatus}` |
+| Response Content Type | `${fhirContentType}` (`application/fhir+json` or `application/fhir+xml`) |
+
+Without these, the listener answers `500` for a rejected message instead of `400`, still with the OperationOutcome as the body.
+
+To build your own response, use `$('fhirOperationOutcome')`, which is filled whenever inbound validation runs.
 
 ## Profiles and packages
 

@@ -35,6 +35,8 @@ public class FhirSerializer implements IMessageSerializer {
     public static final String VALID_VARIABLE = "fhirValid";
     public static final String ISSUE_COUNT_VARIABLE = "fhirIssueCount";
     public static final String ISSUES_VARIABLE = "fhirIssues";
+    /** The issues as a FHIR OperationOutcome resource (JSON), ready to return to the sender. */
+    public static final String OPERATION_OUTCOME_VARIABLE = "fhirOperationOutcome";
 
     private static final Logger logger = LogManager.getLogger(FhirSerializer.class);
 
@@ -77,6 +79,7 @@ public class FhirSerializer implements IMessageSerializer {
                 map.put(VALID_VARIABLE, validation.isValid());
                 map.put(ISSUE_COUNT_VARIABLE, validation.getProblems().size());
                 map.put(ISSUES_VARIABLE, validation.summary());
+                map.put(OPERATION_OUTCOME_VARIABLE, FhirOperationOutcome.fromValidation(validation));
             }
         } catch (Exception e) {
             // toXML reports it on the message; here it would only be lost.

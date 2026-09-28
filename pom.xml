@@ -6,7 +6,7 @@
 
   <groupId>com.matthy.oie</groupId>
   <artifactId>datatype-fhir</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.1</version>
   <packaging>jar</packaging>
 
   <name>OIE FHIR Data Type</name>
@@ -38,8 +38,11 @@
       <groupId>ca.uhn.hapi.fhir</groupId>
       <artifactId>hapi-fhir-structures-r4</artifactId>
       <version>${hapi.version}</version>
+      <!-- OkHttp (with Okio and Kotlin) is only used to download packages and terminology from the internet. -->
       <exclusions>
         <exclusion><groupId>net.sf.saxon</groupId><artifactId>Saxon-HE</artifactId></exclusion>
+        <exclusion><groupId>com.squareup.okhttp3</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion><groupId>com.squareup.okio</groupId><artifactId>*</artifactId></exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -47,8 +50,12 @@
       <artifactId>hapi-fhir-validation</artifactId>
       <version>${hapi.version}</version>
       <!--
-        Not needed to validate R4, and about 60 MB: other FHIR versions, diagram rendering, git,
-        a converter cache in SQLite and XSLT. Put one back if a validation path turns out to need it.
+        Not needed to validate R4, and about 70 MB: other FHIR versions, diagram rendering, git,
+        a converter cache in SQLite, XSLT (Saxon), Thymeleaf's expression language (OGNL), XML
+        signatures, Markdown rendering and an HTTP client. Put one back if a validation path turns out
+        to need it.
+        Tried and needed: dstu3 and the convertors (profiles are converted internally), Thymeleaf,
+        ICU4J (message formatting) and nimbus-jose-jwt (Bundle validation).
       -->
       <exclusions>
         <exclusion><groupId>ca.uhn.hapi.fhir</groupId><artifactId>org.hl7.fhir.dstu2</artifactId></exclusion>
@@ -57,7 +64,18 @@
         <exclusion><groupId>net.sourceforge.plantuml</groupId><artifactId>plantuml-mit</artifactId></exclusion>
         <exclusion><groupId>org.eclipse.jgit</groupId><artifactId>org.eclipse.jgit</artifactId></exclusion>
         <exclusion><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId></exclusion>
+        <exclusion><groupId>net.sf.saxon</groupId><artifactId>Saxon-HE</artifactId></exclusion>
+        <exclusion><groupId>ognl</groupId><artifactId>ognl</artifactId></exclusion>
+        <exclusion><groupId>org.apache.santuario</groupId><artifactId>xmlsec</artifactId></exclusion>
+        <exclusion><groupId>org.commonmark</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion><groupId>org.apache.httpcomponents</groupId><artifactId>httpclient</artifactId></exclusion>
       </exclusions>
+    </dependency>
+    <!-- The FHIR client and its Apache HTTP client, for the terminology server option (RemoteTerminologyServiceValidationSupport). -->
+    <dependency>
+      <groupId>ca.uhn.hapi.fhir</groupId>
+      <artifactId>hapi-fhir-client</artifactId>
+      <version>${hapi.version}</version>
     </dependency>
     <dependency>
       <groupId>ca.uhn.hapi.fhir</groupId>
@@ -128,10 +146,11 @@
       <version>${log4j.version}</version>
       <scope>provided</scope>
     </dependency>
+    <!-- The engine's version (server-lib/commons): HAPI's terminology client needs 3.18 or later. -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.14.0</version>
+      <version>3.20.0</version>
       <scope>provided</scope>
     </dependency>
 

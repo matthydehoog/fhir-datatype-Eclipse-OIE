@@ -1,0 +1,499 @@
+<codeTemplateLibrary version="4.6.0">
+  <id>c7a18ab1-a3b3-38b4-9d6a-9d12b73af7e9</id>
+  <name>FHIR Functions</name>
+  <revision>1</revision>
+  <lastModified>
+    <time>1790812800000</time>
+    <timezone>UTC</timezone>
+  </lastModified>
+  <description>Snippets for the FHIR Data Type (datatype-fhir): FhirTools, the inbound validation variables and E4X on FHIR XML. The Swing Administrator already shows these under FHIR Functions; import this library for the web administrator&apos;s reference list.</description>
+  <includeNewChannels>true</includeNewChannels>
+  <enabledChannelIds/>
+  <disabledChannelIds/>
+  <codeTemplates>
+    <codeTemplate version="4.6.0">
+      <id>6d1f6715-dbc1-3b61-8633-dac56dae888f</id>
+      <name>Validate FHIR resource</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>CHANNEL_ATTACHMENT</contextType>
+          <contextType>CHANNEL_BATCH</contextType>
+          <contextType>CHANNEL_DEPLOY</contextType>
+          <contextType>CHANNEL_POSTPROCESSOR</contextType>
+          <contextType>CHANNEL_PREPROCESSOR</contextType>
+          <contextType>CHANNEL_UNDEPLOY</contextType>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>GLOBAL_DEPLOY</contextType>
+          <contextType>GLOBAL_POSTPROCESSOR</contextType>
+          <contextType>GLOBAL_PREPROCESSOR</contextType>
+          <contextType>GLOBAL_UNDEPLOY</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Validates a FHIR resource (JSON, or XML with or without the FHIR namespace)
+	against the FHIR R4 specification and its meta.profile. isValid() is false on
+	errors; summary() gives one line per error and warning.
+*/
+var FhirTools = Packages.com.mirth.connect.plugins.datatypes.fhir.FhirTools;
+var result = FhirTools.validate(msg.toString());
+if (!result.isValid()) {
+    logger.warn(&apos;Invalid FHIR resource:\n&apos; + result.summary());
+}</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>cae643d7-4748-30f7-a05c-6b18d445d634</id>
+      <name>Validate FHIR resource against a profile</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>CHANNEL_ATTACHMENT</contextType>
+          <contextType>CHANNEL_BATCH</contextType>
+          <contextType>CHANNEL_DEPLOY</contextType>
+          <contextType>CHANNEL_POSTPROCESSOR</contextType>
+          <contextType>CHANNEL_PREPROCESSOR</contextType>
+          <contextType>CHANNEL_UNDEPLOY</contextType>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>GLOBAL_DEPLOY</contextType>
+          <contextType>GLOBAL_POSTPROCESSOR</contextType>
+          <contextType>GLOBAL_PREPROCESSOR</contextType>
+          <contextType>GLOBAL_UNDEPLOY</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Validates a FHIR resource against a required profile (canonical URL). The third
+	argument lists files and folders with your own profiles and NPM packages,
+	separated by &apos;;&apos; (empty for none).
+*/
+var FhirTools = Packages.com.mirth.connect.plugins.datatypes.fhir.FhirTools;
+var result = FhirTools.validate(msg.toString(), &apos;http://example.org/fhir/StructureDefinition/my-patient&apos;, &apos;C:/fhir/packages&apos;);
+if (!result.isValid()) {
+    logger.warn(&apos;Resource does not conform to the profile:\n&apos; + result.summary());
+}</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>4708a1c3-6d39-3300-90dc-9d7a8570b2c8</id>
+      <name>Read FHIR validation issues</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>CHANNEL_ATTACHMENT</contextType>
+          <contextType>CHANNEL_BATCH</contextType>
+          <contextType>CHANNEL_DEPLOY</contextType>
+          <contextType>CHANNEL_POSTPROCESSOR</contextType>
+          <contextType>CHANNEL_PREPROCESSOR</contextType>
+          <contextType>CHANNEL_UNDEPLOY</contextType>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>GLOBAL_DEPLOY</contextType>
+          <contextType>GLOBAL_POSTPROCESSOR</contextType>
+          <contextType>GLOBAL_PREPROCESSOR</contextType>
+          <contextType>GLOBAL_UNDEPLOY</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Walks through the errors and warnings of a validation. Each issue has severity,
+	location, line, column, message and messageId. getIssues() also includes
+	information messages.
+*/
+var FhirTools = Packages.com.mirth.connect.plugins.datatypes.fhir.FhirTools;
+var result = FhirTools.validate(msg.toString());
+var issues = result.getProblems();
+for (var i = 0; i &lt; issues.size(); i++) {
+    var issue = issues.get(i);
+    logger.info(issue.get(&apos;severity&apos;) + &apos; &apos; + issue.get(&apos;location&apos;) + &apos;: &apos; + issue.get(&apos;message&apos;));
+}</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>df6fd51f-1074-32b7-b6d4-3006041eb757</id>
+      <name>Convert FHIR XML to JSON</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>CHANNEL_ATTACHMENT</contextType>
+          <contextType>CHANNEL_BATCH</contextType>
+          <contextType>CHANNEL_DEPLOY</contextType>
+          <contextType>CHANNEL_POSTPROCESSOR</contextType>
+          <contextType>CHANNEL_PREPROCESSOR</contextType>
+          <contextType>CHANNEL_UNDEPLOY</contextType>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>GLOBAL_DEPLOY</contextType>
+          <contextType>GLOBAL_POSTPROCESSOR</contextType>
+          <contextType>GLOBAL_PREPROCESSOR</contextType>
+          <contextType>GLOBAL_UNDEPLOY</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Converts FHIR XML, with or without the FHIR namespace (e.g. the transformer&apos;s
+	msg), to FHIR JSON.
+*/
+var FhirTools = Packages.com.mirth.connect.plugins.datatypes.fhir.FhirTools;
+var json = FhirTools.toJson(msg.toString());</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>508c2830-d619-3b76-9d13-b40dde8ba239</id>
+      <name>Convert FHIR JSON to XML</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>CHANNEL_ATTACHMENT</contextType>
+          <contextType>CHANNEL_BATCH</contextType>
+          <contextType>CHANNEL_DEPLOY</contextType>
+          <contextType>CHANNEL_POSTPROCESSOR</contextType>
+          <contextType>CHANNEL_PREPROCESSOR</contextType>
+          <contextType>CHANNEL_UNDEPLOY</contextType>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>GLOBAL_DEPLOY</contextType>
+          <contextType>GLOBAL_POSTPROCESSOR</contextType>
+          <contextType>GLOBAL_PREPROCESSOR</contextType>
+          <contextType>GLOBAL_UNDEPLOY</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Converts FHIR JSON to FHIR XML with the FHIR namespace. Use new XML(...) on the
+	result to work on it with E4X.
+*/
+var FhirTools = Packages.com.mirth.connect.plugins.datatypes.fhir.FhirTools;
+var xml = FhirTools.toXml(json);</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>f7884d94-20e6-335d-995a-4b350d6c8b91</id>
+      <name>Is the FHIR message valid</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	true or false: the result of the inbound validation, set also when Invalid
+	Messages is on Accept.
+*/
+$(&apos;fhirValid&apos;)</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>bb40151d-f6ce-31f0-bc39-0653a53a04bf</id>
+      <name>Get FHIR issue count</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	The number of errors and warnings the inbound validation found.
+*/
+$(&apos;fhirIssueCount&apos;)</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>3497921f-f402-31ba-8510-b2a23d784c2b</id>
+      <name>Get FHIR issues</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	The errors and warnings of the inbound validation, one line per issue, e.g.
+	&apos;error Patient.gender (line 1, column 39): ...&apos;.
+*/
+$(&apos;fhirIssues&apos;)</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>4fdae078-d86e-3352-9512-f3d031d7cf09</id>
+      <name>Get FHIR OperationOutcome</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	The issues of the inbound validation as a FHIR OperationOutcome resource (JSON),
+	ready to return to the sender.
+*/
+$(&apos;fhirOperationOutcome&apos;)</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>8f67020b-20f9-3d52-839b-b9424ca1ebc7</id>
+      <name>Filter out invalid FHIR messages</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_DISPATCHER</contextType>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+          <contextType>SOURCE_RECEIVER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	A filter rule that only lets valid messages through. Set Invalid Messages to
+	Accept, otherwise invalid messages are already rejected before the filter.
+*/
+if ($(&apos;fhirValid&apos;) == false) {
+    logger.warn(&apos;Invalid FHIR message:\n&apos; + $(&apos;fhirIssues&apos;));
+    return false;
+}
+return true;</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>3908eb15-c47d-3a27-8c0a-528063bd155a</id>
+      <name>Read a FHIR value</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	FHIR XML keeps values in the value attribute: read them with @value and
+	toString(). Assumes Strip Namespaces is on (the default), so the FHIR XML has no
+	namespace.
+*/
+var family = msg.name[0].family.@value.toString();</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>06b507eb-1cb3-37e4-a76e-29920bad0acc</id>
+      <name>Set a FHIR value</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Sets the value attribute of an existing element. Assumes Strip Namespaces is on
+	(the default), so the FHIR XML has no namespace.
+*/
+msg.gender.@value = &apos;female&apos;;</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>1b6c831d-d4da-31ee-97ac-eaddf09478bf</id>
+      <name>Add a FHIR element</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Adds an element with a value attribute. FHIR XML requires the element order of
+	the specification: with XML output, insert it at the right place (e.g.
+	msg.insertChildAfter(msg.gender, ...)). Assumes Strip Namespaces is on (the
+	default), so the FHIR XML has no namespace.
+*/
+msg.appendChild(&lt;birthDate value=&quot;1980-01-01&quot;/&gt;);</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>487d09a3-8430-3675-aa69-77ee35450556</id>
+      <name>Iterate FHIR Bundle entries</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Walks through the entries of a Bundle. Each entry.resource holds one resource
+	element, e.g. &lt;Patient&gt;. Assumes Strip Namespaces is on (the default), so the
+	FHIR XML has no namespace.
+*/
+for each (var entry in msg.entry) {
+    var resource = entry.resource.children()[0];
+    logger.info(resource.localName() + &apos;/&apos; + resource.id.@value);
+}</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>cc6c7cd5-3ed8-307b-a922-d2e87365a407</id>
+      <name>Find a FHIR coding by system</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Picks the code of the coding with a given system from a CodeableConcept. Assumes
+	Strip Namespaces is on (the default), so the FHIR XML has no namespace.
+*/
+var loinc = msg.code.coding.(system.@value == &apos;http://loinc.org&apos;).code.@value.toString();</code>
+      </properties>
+    </codeTemplate>
+    <codeTemplate version="4.6.0">
+      <id>8f41eacd-6268-305b-a3f8-f686908708ee</id>
+      <name>Find a FHIR extension by URL</name>
+      <revision>1</revision>
+      <lastModified>
+        <time>1790812800000</time>
+        <timezone>UTC</timezone>
+      </lastModified>
+      <contextSet>
+        <delegate>
+          <contextType>DESTINATION_FILTER_TRANSFORMER</contextType>
+          <contextType>DESTINATION_RESPONSE_TRANSFORMER</contextType>
+          <contextType>SOURCE_FILTER_TRANSFORMER</contextType>
+        </delegate>
+      </contextSet>
+      <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
+        <type>DRAG_AND_DROP_CODE</type>
+        <code>/**
+	Selects an extension by its url attribute; read its value with e.g.
+	extension.valueString.@value. Assumes Strip Namespaces is on (the default), so
+	the FHIR XML has no namespace.
+*/
+var extension = msg.extension.(@url == &apos;http://example.org/fhir/StructureDefinition/my-extension&apos;);</code>
+      </properties>
+    </codeTemplate>
+  </codeTemplates>
+</codeTemplateLibrary>

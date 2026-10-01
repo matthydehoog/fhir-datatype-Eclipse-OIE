@@ -135,6 +135,8 @@ The script editors' reference list has a **FHIR Functions** category with drag-a
 
 *Conversion Functions* also has the standard *Convert FHIR to XML* and *Convert XML to FHIR* entries.
 
+**Web administrator.** Its reference list cannot show plugin categories yet, but it does show code template libraries. Import [`examples/fhir-functions-code-templates.xml`](examples/fhir-functions-code-templates.xml) on the *Code Templates* page (*Import Libraries*): the same snippets then appear under the category *FHIR Functions*. The templates are drag-and-drop snippets, so they are never added to channel scripts. In the Swing Administrator you don't need the library; there it would show the snippets a second time, under *User Defined Code*.
+
 ## Behaviour to know
 
 - **No transformer**: without filter or transformer steps a message passes through unchanged, unless the output format differs from the input (JSON in, XML out or the other way round); then it is converted.

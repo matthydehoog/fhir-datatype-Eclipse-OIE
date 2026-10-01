@@ -6,12 +6,17 @@
 
 package com.mirth.connect.plugins.datatypes.fhir.client;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
+import java.util.UUID;
 
 import com.mirth.connect.model.codetemplates.CodeTemplate;
 import com.mirth.connect.model.codetemplates.CodeTemplateContextSet;
+import com.mirth.connect.model.codetemplates.CodeTemplateLibrary;
 import com.mirth.connect.model.codetemplates.CodeTemplateProperties.CodeTemplateType;
 import com.mirth.connect.model.codetemplates.ContextType;
 import com.mirth.connect.model.datatype.DataTypeDelegate;
@@ -130,6 +135,42 @@ public class FhirDataTypeCodeTemplatePlugin extends DataTypeCodeTemplatePlugin {
                 "Selects an extension by its url attribute; read its value with e.g. extension.valueString.@value." + STRIP_NAMESPACES_NOTE));
 
         return templates;
+    }
+
+    /**
+     * The same templates as an importable code template library, for the web administrator: its
+     * reference list shows code template libraries but has no way for plugins to add items.
+     * Written to examples/ by FhirDataTypeCodeTemplatePluginTest. IDs and dates are fixed so the
+     * file only changes when the templates do.
+     */
+    public static CodeTemplateLibrary fhirLibrary() {
+        Calendar fixed = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        fixed.clear();
+        fixed.set(2026, Calendar.OCTOBER, 1);
+
+        List<CodeTemplate> templates = fhirTemplates();
+        for (CodeTemplate template : templates) {
+            template.setId(stableId("template:" + template.getName()));
+            template.setRevision(1);
+            template.setLastModified((Calendar) fixed.clone());
+        }
+
+        CodeTemplateLibrary library = new CodeTemplateLibrary();
+        library.setId(stableId("library:" + CATEGORY));
+        library.setName(CATEGORY);
+        library.setRevision(1);
+        library.setLastModified(fixed);
+        library.setDescription("Snippets for the FHIR Data Type (datatype-fhir): FhirTools, the inbound validation variables and E4X on FHIR XML. "
+                + "The Swing Administrator already shows these under FHIR Functions; import this library for the web administrator's reference list.");
+        // The web administrator only lists libraries that apply to the channel. Drag-and-drop
+        // templates are never added to scripts, so including all channels costs nothing.
+        library.setIncludeNewChannels(true);
+        library.setCodeTemplates(templates);
+        return library;
+    }
+
+    private static String stableId(String key) {
+        return UUID.nameUUIDFromBytes(("datatype-fhir:" + key).getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private static CodeTemplate code(String name, CodeTemplateContextSet contexts, String code, String description) {

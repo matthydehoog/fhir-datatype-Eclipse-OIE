@@ -4,9 +4,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.Test;
 import org.mozilla.javascript.Context;
@@ -15,7 +23,9 @@ import org.mozilla.javascript.EvaluatorException;
 import org.mozilla.javascript.Scriptable;
 
 import com.mirth.connect.model.codetemplates.CodeTemplate;
+import com.mirth.connect.model.codetemplates.CodeTemplateLibrary;
 import com.mirth.connect.model.codetemplates.ContextType;
+import com.mirth.connect.model.converters.ObjectXMLSerializer;
 
 public class FhirDataTypeCodeTemplatePluginTest {
 
@@ -61,6 +71,45 @@ public class FhirDataTypeCodeTemplatePluginTest {
         assertTrue(template("Read a FHIR value").getContextSet().contains(ContextType.SOURCE_FILTER_TRANSFORMER));
         assertFalse(template("Read a FHIR value").getContextSet().contains(ContextType.CHANNEL_DEPLOY));
         assertTrue(template("Convert FHIR JSON to XML").getContextSet().contains(ContextType.CHANNEL_DEPLOY));
+    }
+
+    /**
+     * examples/fhir-functions-code-templates.xml is the library for the web administrator,
+     * generated from the same templates. Regenerate with: mvn test -DupdateExamples=true
+     */
+    @Test
+    public void exampleCodeTemplateLibraryIsUpToDate() throws Exception {
+        ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
+        serializer.init("4.6.0");
+        String xml = sortContextTypes(serializer.serialize(FhirDataTypeCodeTemplatePlugin.fhirLibrary()).replace("\r\n", "\n"));
+
+        Path file = Paths.get("examples", "fhir-functions-code-templates.xml");
+        if (Boolean.getBoolean("updateExamples")) {
+            Files.write(file, xml.getBytes(StandardCharsets.UTF_8));
+        }
+        String onDisk = new String(Files.readAllBytes(file), StandardCharsets.UTF_8).replace("\r\n", "\n");
+        assertEquals("examples/fhir-functions-code-templates.xml is stale: run mvn test -DupdateExamples=true", xml, sortContextTypes(onDisk));
+
+        CodeTemplateLibrary library = serializer.deserialize(onDisk, CodeTemplateLibrary.class);
+        assertEquals(FhirDataTypeCodeTemplatePlugin.CATEGORY, library.getName());
+        assertTrue(library.isIncludeNewChannels());
+        assertEquals(FhirDataTypeCodeTemplatePlugin.fhirTemplates().size(), library.getCodeTemplates().size());
+        CodeTemplate first = library.getCodeTemplates().get(0);
+        assertEquals("Validate FHIR resource", first.getName());
+        assertTrue(first.getDescription(), first.getDescription().startsWith("Validates a FHIR resource"));
+    }
+
+    /** A context set is a HashSet of enums, so its order depends on identity hash codes: sort it. */
+    private static String sortContextTypes(String xml) {
+        Matcher m = Pattern.compile("(<delegate>\n)((?:\\s*<contextType>\\w+</contextType>\n)+)(\\s*</delegate>)").matcher(xml);
+        StringBuffer out = new StringBuffer();
+        while (m.find()) {
+            List<String> lines = new ArrayList<String>(Arrays.asList(m.group(2).split("\n")));
+            Collections.sort(lines);
+            m.appendReplacement(out, Matcher.quoteReplacement(m.group(1) + String.join("\n", lines) + "\n" + m.group(3)));
+        }
+        m.appendTail(out);
+        return out.toString();
     }
 
     /** Every snippet must be valid JavaScript (with E4X) for the engine's Rhino. */

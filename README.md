@@ -123,7 +123,17 @@ if (!result.isValid()) {
 var json = FhirTools.toJson(msg.toString()); // transformer XML to JSON
 ```
 
-`FhirTools.validate(resource, requiredProfile, profilePackages)` validates against your own profiles.
+`FhirTools.validate(resource, requiredProfile, profilePackages)` validates against your own profiles. `validate` and `toJson` accept FHIR XML with or without the FHIR namespace, so `msg.toString()` works in a transformer with *Strip Namespaces* on.
+
+### Reference list
+
+The script editors' reference list has a **FHIR Functions** category with drag-and-drop snippets:
+
+- `FhirTools`: validate (also against a profile), walk through the issues, convert XML to JSON and back;
+- the inbound validation variables `$('fhirValid')`, `$('fhirIssueCount')`, `$('fhirIssues')`, `$('fhirOperationOutcome')`, and a filter rule that drops invalid messages;
+- E4X on FHIR XML (filters and transformers): read and set `@value`, add an element, iterate the entries of a Bundle, find a coding by system and an extension by URL.
+
+*Conversion Functions* also has the standard *Convert FHIR to XML* and *Convert XML to FHIR* entries.
 
 ## Behaviour to know
 

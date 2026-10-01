@@ -24,7 +24,10 @@ public final class FhirTools {
 
     private FhirTools() {}
 
-    /** Validates a FHIR JSON or XML resource against the base specification and its meta.profile. */
+    /**
+     * Validates a FHIR JSON or XML resource against the base specification and its meta.profile.
+     * XML may be without the FHIR namespace, e.g. msg.toString() in a transformer.
+     */
     public static FhirValidation validate(String resource) throws Exception {
         return validate(resource, "", "");
     }
@@ -42,7 +45,11 @@ public final class FhirTools {
         FhirSerializationProperties properties = new FhirSerializationProperties();
         properties.setRequiredProfile(requiredProfile == null ? "" : requiredProfile);
         properties.setProfiles(profiles == null ? "" : profiles);
-        return new FhirValidation(FhirEngineLoader.engine().validate(resource, properties.engineOptions()), FailOn.Errors);
+        String source = resource.trim();
+        if (FhirXml.detect(source) == FhirXml.Format.XML) {
+            source = FhirXml.addNamespace(source);
+        }
+        return new FhirValidation(FhirEngineLoader.engine().validate(source, properties.engineOptions()), FailOn.Errors);
     }
 
     /** FHIR XML (with or without the FHIR namespace, e.g. msg.toString()) to FHIR JSON. */

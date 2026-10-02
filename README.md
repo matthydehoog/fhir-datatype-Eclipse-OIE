@@ -127,15 +127,9 @@ var json = FhirTools.toJson(msg.toString()); // transformer XML to JSON
 
 ### Reference list
 
-The script editors' reference list has a **FHIR Functions** category with drag-and-drop snippets:
+The script editors' reference list has a **FHIR Functions** category with 16 drag-and-drop snippets: `FhirTools` (validate, also against a profile; walk through the issues; convert XML to JSON and back), the inbound validation variables (`fhirValid`, `fhirIssueCount`, `fhirIssues`, `fhirOperationOutcome`) with a filter rule for invalid messages, and E4X patterns for FHIR XML. In the web administrator, import [`examples/fhir-functions-code-templates.xml`](examples/fhir-functions-code-templates.xml) to get them.
 
-- `FhirTools`: validate (also against a profile), walk through the issues, convert XML to JSON and back;
-- the inbound validation variables `$('fhirValid')`, `$('fhirIssueCount')`, `$('fhirIssues')`, `$('fhirOperationOutcome')`, and a filter rule that drops invalid messages;
-- E4X on FHIR XML (filters and transformers): read and set `@value`, add an element, iterate the entries of a Bundle, find a coding by system and an extension by URL.
-
-*Conversion Functions* also has the standard *Convert FHIR to XML* and *Convert XML to FHIR* entries.
-
-**Web administrator.** Its reference list cannot show plugin categories yet, but it does show code template libraries. Import [`examples/fhir-functions-code-templates.xml`](examples/fhir-functions-code-templates.xml) on the *Code Templates* page (*Import Libraries*): the same snippets then appear under the category *FHIR Functions*. The templates are drag-and-drop snippets, so they are never added to channel scripts. In the Swing Administrator you don't need the library; there it would show the snippets a second time, under *User Defined Code*.
+See [docs/code-templates.md](docs/code-templates.md) for how to use them, what each template does and what to adapt.
 
 ## Behaviour to know
 

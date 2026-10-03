@@ -10,13 +10,31 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.mirth.connect.donkey.util.DonkeyElement;
+import com.mirth.connect.model.datatype.BatchProperties;
 import com.mirth.connect.model.datatype.DataTypeProperties;
+import com.mirth.connect.model.datatype.SerializerProperties;
 
-/** Serialization properties only: a FHIR message is one resource (a Bundle is one message too). */
+/** Serialization properties, and batch properties to split a Bundle into one message per entry. */
 public class FhirDataTypeProperties extends DataTypeProperties {
 
     public FhirDataTypeProperties() {
         serializationProperties = new FhirSerializationProperties();
+        batchProperties = new FhirBatchProperties();
+    }
+
+    /** Channels saved before 1.3.0 have no batch properties: XStream does not run the constructor. */
+    @Override
+    public BatchProperties getBatchProperties() {
+        if (batchProperties == null) {
+            batchProperties = new FhirBatchProperties();
+        }
+        return batchProperties;
+    }
+
+    @Override
+    public SerializerProperties getSerializerProperties() {
+        getBatchProperties();
+        return super.getSerializerProperties();
     }
 
     // @formatter:off
@@ -39,6 +57,7 @@ public class FhirDataTypeProperties extends DataTypeProperties {
     public Map<String, Object> getPurgedProperties() {
         Map<String, Object> purged = new HashMap<String, Object>();
         purged.put("serializationProperties", serializationProperties.getPurgedProperties());
+        purged.put("batchProperties", getBatchProperties().getPurgedProperties());
         return purged;
     }
 }

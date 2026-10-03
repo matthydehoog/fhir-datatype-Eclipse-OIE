@@ -5,6 +5,10 @@ const PKG = "com.mirth.connect.plugins.datatypes.fhir";
 const bool = (key, label, def, hint) => ({ key, label, type: "checkbox", default: def, hint });
 const text = (key, label, def, hint) => ({ key, label, type: "text", default: def, hint });
 const opt = (key, label, values, def, hint) => ({ key, label, type: "select", options: values.map((value) => ({ value, label: value })), default: def, hint });
+const code = (key, label, def, hint) => ({ key, label, type: "code", default: def, hint });
+
+const BATCH_SCRIPT_HINT =
+  "JavaScript that splits the batch and returns the next message. Has access to 'reader' (a Java BufferedReader); return null/empty to signal end of input. Only used when Process Batch is enabled in the connector.";
 
 const DEF = {
   name: "FHIR",
@@ -30,6 +34,25 @@ const DEF = {
         opt("unknownCodeSystems", "Unknown Code Systems", ["Warning", "Error", "Information"], "Warning", "How a code from a code system the validator does not know is reported (for example SNOMED CT or LOINC)."),
         bool("anyExtensionsAllowed", "Allow Unknown Extensions", true, "If checked, extensions whose definition the validator does not know are accepted. If not checked, they are errors."),
         text("terminologyServer", "Terminology Server", "", "Optional base URL of a FHIR terminology server to check codes the validator cannot check itself. Leave empty to validate offline.")
+      ]
+    },
+    {
+      key: "batchProperties",
+      label: "Batch",
+      class: `${PKG}.FhirBatchProperties`,
+      fields: [
+        {
+          key: "splitType",
+          label: "Split Batch By",
+          type: "select",
+          options: [
+            { value: "Bundle_Entry", label: "Bundle Entry" },
+            { value: "JavaScript", label: "JavaScript" }
+          ],
+          default: "Bundle_Entry",
+          hint: "Bundle Entry: every Bundle.entry.resource becomes a separate message, in the format it came in. The source map gets fhirBundleType, fhirBundleId, fhirEntryIndex (0 for the first entry), fhirEntryCount, fhirEntryFullUrl, fhirEntryRequestMethod and fhirEntryRequestUrl. Entries without a resource are skipped; a message that is not a Bundle stays one message. Only used when Process Batch is enabled in the connector."
+        },
+        code("batchScript", "JavaScript", null, BATCH_SCRIPT_HINT)
       ]
     }
   ]

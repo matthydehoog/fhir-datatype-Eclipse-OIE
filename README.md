@@ -7,6 +7,7 @@ An HL7 FHIR data type for [Eclipse Open Integration Engine](https://github.com/O
 - **FHIR JSON or FHIR XML out**, chosen per connector.
 - **Validation** with [HAPI FHIR](https://hapifhir.io) against the FHIR R4 specification and your own profiles and packages (for example Nictiz zib2020 / nl-core). It checks structure, data types, cardinality, required elements, value set bindings and invariants.
 - **Invalid messages** are rejected (status ERROR, with the issues as the error) or accepted with the issues in the connector map; you choose per connector.
+- **Batch processing**: a Bundle can be split into one message per entry, each validated on its own.
 
 FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later without changing saved channels.
 
@@ -37,6 +38,7 @@ FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later wit
 | Unknown Code Systems | Warning | How codes from code systems the validator does not know (SNOMED CT, LOINC, ...) are reported. |
 | Allow Unknown Extensions | on | Accept extensions whose definition is unknown. |
 | Terminology Server | empty | Optional FHIR terminology server for codes the validator cannot check offline. |
+| Split Batch By (Batch) | Bundle Entry | *Bundle Entry*: every `Bundle.entry.resource` is one message. *JavaScript*: your own splitter. Only used when *Process Batch* is on in the source connector; see [Batch processing](#batch-processing). |
 
 ### Connector map
 
@@ -60,6 +62,29 @@ if ($('fhirValid') == false) {
 }
 return true;
 ```
+
+## Batch processing
+
+Turn on **Process Batch** in the source connector's settings to split a Bundle into one message per entry, for example a `batch` or `collection` Bundle of Observations. With *Split Batch By: Bundle Entry* (the default) every `Bundle.entry.resource` becomes a separate message, in the format it came in (JSON or XML), and is validated and transformed on its own.
+
+Each message gets these source map variables:
+
+| Variable | Value |
+| --- | --- |
+| `fhirBundleType` | `Bundle.type`, e.g. `batch`, `transaction` or `collection` |
+| `fhirBundleId` | `Bundle.id`, when the Bundle has one |
+| `fhirEntryIndex` | position of the entry in the Bundle: 0 for the first, as in `Bundle.entry[0]` |
+| `fhirEntryCount` | number of entries in the Bundle |
+| `fhirEntryFullUrl` | the entry's `fullUrl`, when it has one |
+| `fhirEntryRequestMethod` | the entry's `request.method` (`POST`, `PUT`, ...), when it has one |
+| `fhirEntryRequestUrl` | the entry's `request.url`, when it has one |
+
+For example `$('fhirEntryRequestMethod')` in a transformer. The engine also adds its own `batchSequenceId` (1 for the first message).
+
+- Entries without a resource (a `DELETE` in a transaction) give no message; `fhirEntryIndex` still counts them.
+- A message that is not a Bundle stays one message. So does a message that cannot be read: validation then reports what is wrong with it.
+- References between entries (`urn:uuid:` in a transaction) are not resolved: each resource is validated as it is.
+- *Split Batch By: JavaScript* works as in the other data types: a script that reads from `reader` and returns the next message, or nothing at the end.
 
 ## Responding to the sender
 
@@ -135,7 +160,7 @@ See [docs/code-templates.md](docs/code-templates.md) for how to use them, what e
 
 - **No transformer**: without filter or transformer steps a message passes through unchanged, unless the output format differs from the input (JSON in, XML out or the other way round); then it is converted.
 - **Unknown elements**: converting XML to JSON (and JSON to XML output) refuses elements that are not in the specification instead of dropping them silently. Inbound validation reports them first.
-- **Bundles** are one message. There is no batch splitting.
+- **Bundles** are one message, unless *Process Batch* is on in the source connector (see [Batch processing](#batch-processing)).
 - **Accept on outbound** does not exist: an invalid outbound message is always rejected, because there is no later step to handle it.
 
 ## Examples

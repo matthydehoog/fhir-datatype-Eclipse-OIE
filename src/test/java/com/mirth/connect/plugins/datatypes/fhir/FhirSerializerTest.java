@@ -187,6 +187,26 @@ public class FhirSerializerTest {
         assertTrue(FhirTools.validate(json).summary(), FhirTools.validate(json).isValid());
     }
 
+    /** Batch processing (#6): every entry is its own message, validated on its own. */
+    @Test
+    public void validatesEverySplitEntryOnItsOwn() throws Exception {
+        String bundle = BUNDLE.substring(0, BUNDLE.length() - 2) + ",{\"fullUrl\":\"urn:uuid:3\",\"resource\":" + INVALID_PATIENT + "}]}";
+        java.util.List<FhirBundleSplitter.Part> parts = FhirBundleSplitter.split(bundle);
+        assertEquals(3, parts.size());
+
+        FhirSerializationProperties p = new FhirSerializationProperties();
+        p.setInvalidMessages(InvalidMessages.Accept);
+        FhirSerializer s = serializer(p);
+        Boolean[] expected = { Boolean.TRUE, Boolean.TRUE, Boolean.FALSE };
+        String[] types = { "Patient", "Observation", "Patient" };
+        for (int i = 0; i < 3; i++) {
+            Map<String, Object> map = new HashMap<>();
+            s.populateMetaData(parts.get(i).getMessage(), map);
+            assertEquals(types[i], map.get("mirth_type"));
+            assertEquals(map.get(FhirSerializer.ISSUES_VARIABLE).toString(), expected[i], map.get(FhirSerializer.VALID_VARIABLE));
+        }
+    }
+
     @Test
     public void jsHelperValidates() throws Exception {
         FhirValidation v = FhirTools.validate(INVALID_PATIENT);

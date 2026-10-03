@@ -59,6 +59,87 @@ final class FhirJson {
         return value;
     }
 
+    /** Writes a parsed value back as JSON, indented with two spaces; numbers keep their exact text. */
+    static String write(Object value) {
+        StringBuilder sb = new StringBuilder();
+        write(sb, value, 0);
+        return sb.toString();
+    }
+
+    private static void write(StringBuilder sb, Object value, int depth) {
+        if (value instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) value;
+            if (map.isEmpty()) {
+                sb.append("{}");
+                return;
+            }
+            sb.append('{');
+            String sep = "\n";
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                sb.append(sep);
+                indent(sb, depth + 1);
+                writeString(sb, String.valueOf(e.getKey()));
+                sb.append(": ");
+                write(sb, e.getValue(), depth + 1);
+                sep = ",\n";
+            }
+            sb.append('\n');
+            indent(sb, depth);
+            sb.append('}');
+        } else if (value instanceof List) {
+            List<?> list = (List<?>) value;
+            if (list.isEmpty()) {
+                sb.append("[]");
+                return;
+            }
+            sb.append('[');
+            String sep = "\n";
+            for (Object item : list) {
+                sb.append(sep);
+                indent(sb, depth + 1);
+                write(sb, item, depth + 1);
+                sep = ",\n";
+            }
+            sb.append('\n');
+            indent(sb, depth);
+            sb.append(']');
+        } else if (value instanceof String) {
+            writeString(sb, (String) value);
+        } else {
+            // Boolean, Number (its text as written) or NULL
+            sb.append(value);
+        }
+    }
+
+    private static void writeString(StringBuilder sb, String s) {
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                case '\b': sb.append("\\b"); break;
+                case '\f': sb.append("\\f"); break;
+                default:
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+            }
+        }
+        sb.append('"');
+    }
+
+    private static void indent(StringBuilder sb, int depth) {
+        for (int i = 0; i < depth; i++) {
+            sb.append("  ");
+        }
+    }
+
     private Object value() {
         if (pos >= s.length()) {
             throw error("unexpected end of the JSON");

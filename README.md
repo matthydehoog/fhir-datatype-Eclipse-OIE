@@ -11,6 +11,10 @@ An HL7 FHIR data type for [Eclipse Open Integration Engine](https://github.com/O
 
 FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later without changing saved channels.
 
+## Online course
+
+[FHIR Data Type for Eclipse OIE](https://eclipse-oie.moodiy.cloud/course/view.php?id=9) on the Academy for Eclipse OIE is a free course on this plugin: installation and properties, validation, FHIR in the transformer and scripts, and 17 hands-on exercises with a test channel and fictitious messages, ending with a final test. Create an account on the site and click *Enrol me* on the course page.
+
 ## Installation
 
 1. Download `datatype-fhir-<version>.zip` from the [releases](https://github.com/matthydehoog/fhir-datatype-Eclipse-OIE/releases).

@@ -31,7 +31,7 @@ FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later wit
 | --- | --- | --- |
 | FHIR Version | R4 | The FHIR version of the messages. |
 | Strip Namespaces | on | Removes the FHIR namespace from the transformer XML (the XHTML namespace of `text.div` stays) and puts it back afterwards. |
-| Output Format | JSON | FHIR JSON or FHIR XML for the outbound message. |
+| Output Format | JSON | FHIR JSON or FHIR XML for the outbound message. Both are written by the FHIR engine in the element order of the specification. |
 | Pretty Print | on | Indents JSON and XML created by the FHIR engine. |
 | Validate Inbound | on | Validates every inbound message. |
 | Validate Outbound | off | Validates the outbound message after the transformer; an invalid one is always rejected. |
@@ -135,7 +135,7 @@ msg.gender.@value = 'female';
 msg.appendChild(<birthDate value="1980-01-01"/>);
 ```
 
-Mind the FHIR element order when you add elements and choose XML output: FHIR XML requires the order of the specification. JSON output is ordered by the FHIR engine.
+You don't have to mind the FHIR element order: after the transformer the FHIR engine writes the message again, JSON or XML, in the order of the specification. So `birthDate` ends up after `gender`, wherever you appended it. An element that is not in the specification is refused with an error instead of being dropped.
 
 ### In scripts
 
@@ -163,7 +163,8 @@ See [docs/code-templates.md](docs/code-templates.md) for how to use them, what e
 ## Behaviour to know
 
 - **No transformer**: without filter or transformer steps a message passes through unchanged, unless the output format differs from the input (JSON in, XML out or the other way round); then it is converted.
-- **Unknown elements**: converting XML to JSON (and JSON to XML output) refuses elements that are not in the specification instead of dropping them silently. Inbound validation reports them first.
+- **Unknown elements**: the outbound message (after a transformer, or when it is converted) refuses elements that are not in the specification instead of dropping them silently. Inbound validation reports them first.
+- **XML output after a transformer** is written again by the FHIR engine, so its element order is always that of the specification. XML comments and the formatting of the transformer are not kept; *Pretty Print* decides the layout.
 - **Bundles** are one message, unless *Process Batch* is on in the source connector (see [Batch processing](#batch-processing)).
 - **Accept on outbound** does not exist: an invalid outbound message is always rejected, because there is no later step to handle it.
 

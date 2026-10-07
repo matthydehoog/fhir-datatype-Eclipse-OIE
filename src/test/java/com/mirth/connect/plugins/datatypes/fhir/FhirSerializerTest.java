@@ -105,6 +105,59 @@ public class FhirSerializerTest {
         assertTrue(converted, converted.startsWith("<Patient xmlns=\"http://hl7.org/fhir\">"));
     }
 
+    /** As a transformer leaves it after msg.appendChild(...): birthDate and gender after name, id last. */
+    private static final String PATIENT_OUT_OF_ORDER = "<Patient>"
+            + "<extension url=\"http://example.org/fhir/StructureDefinition/shoe-size\"><valueInteger value=\"42\"/></extension>"
+            + "<name><given value=\"Piet\"/><family value=\"Jansen\"/></name>"
+            + "<birthDate value=\"1980-01-01\"/><gender value=\"male\"/>"
+            + "<text><status value=\"generated\"/><div xmlns=\"http://www.w3.org/1999/xhtml\">Piet Jansen</div></text>"
+            + "<id value=\"p1\"/></Patient>";
+
+    private static FhirSerializationProperties xmlOut() {
+        FhirSerializationProperties p = new FhirSerializationProperties();
+        p.setOutputFormat(OutputFormat.XML);
+        return p;
+    }
+
+    private static void assertInOrder(String text, String... parts) {
+        int at = -1;
+        for (String part : parts) {
+            int next = text.indexOf(part);
+            assertTrue(part + " missing or out of order in:\n" + text, next > at);
+            at = next;
+        }
+    }
+
+    @Test
+    public void writesXmlOutInTheOrderOfTheSpecification() throws Exception {
+        String xml = serializer(xmlOut()).fromXML(PATIENT_OUT_OF_ORDER);
+        assertTrue(xml, xml.startsWith("<Patient xmlns=\"http://hl7.org/fhir\">"));
+        assertInOrder(xml, "<id value=\"p1\"/>", "<text>", "<extension url=", "<name>", "<family value=\"Jansen\"/>",
+                "<given value=\"Piet\"/>", "<gender value=\"male\"/>", "<birthDate value=\"1980-01-01\"/>");
+        // The narrative keeps its XHTML namespace, the extension its value.
+        assertTrue(xml, xml.contains("<div xmlns=\"http://www.w3.org/1999/xhtml\">Piet Jansen</div>"));
+        assertTrue(xml, xml.contains("<valueInteger value=\"42\"/>"));
+    }
+
+    @Test
+    public void refusesUnknownElementsInXmlOut() throws Exception {
+        try {
+            serializer(xmlOut()).fromXML("<Patient><id value=\"p1\"/><shoeSize value=\"42\"/></Patient>");
+            fail("expected the unknown element to be refused");
+        } catch (MessageSerializerException e) {
+            assertTrue(e.getMessage(), e.getMessage().startsWith("Error converting FHIR to XML"));
+            assertTrue(e.getMessage(), e.getMessage().contains("shoeSize"));
+        }
+    }
+
+    @Test
+    public void leavesXmlAsItIsWithoutTransformer() throws Exception {
+        FhirSerializationProperties in = new FhirSerializationProperties();
+        in.setValidateInbound(false);
+        String xml = "<Patient xmlns=\"http://hl7.org/fhir\"><gender value=\"male\"/><id value=\"p1\"/></Patient>";
+        assertEquals(xml, serializer(in).transformWithoutSerializing(xml, serializer(xmlOut())));
+    }
+
     @Test
     public void refusesXmlOutThatHasUnknownElementsInsteadOfDroppingThem() throws Exception {
         try {

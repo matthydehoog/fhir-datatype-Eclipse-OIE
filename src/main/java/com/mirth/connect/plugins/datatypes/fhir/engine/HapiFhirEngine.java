@@ -103,6 +103,15 @@ public final class HapiFhirEngine implements FhirEngine {
     }
 
     @Override
+    public String reorderXml(String xml, String fhirVersion, boolean pretty) throws Exception {
+        return withEngineClassLoader(() -> {
+            FhirContext ctx = context(fhirVersion);
+            IBaseResource resource = strict(ctx.newXmlParser()).parseResource(xml);
+            return ctx.newXmlParser().setPrettyPrint(pretty).encodeResourceToString(resource);
+        });
+    }
+
+    @Override
     public void warmUp(Map<String, String> options) {
         try {
             withEngineClassLoader(() -> validator(options));

@@ -410,10 +410,9 @@ msg.gender.@value = &apos;female&apos;;</code>
       <properties class="com.mirth.connect.model.codetemplates.BasicCodeTemplateProperties">
         <type>DRAG_AND_DROP_CODE</type>
         <code>/**
-	Adds an element with a value attribute. FHIR XML requires the element order of
-	the specification: with XML output, insert it at the right place (e.g.
-	msg.insertChildAfter(msg.gender, ...)). Assumes Strip Namespaces is on (the
-	default), so the FHIR XML has no namespace.
+	Adds an element with a value attribute. The place does not matter: the outbound
+	message is written in the element order of the specification. Assumes Strip
+	Namespaces is on (the default), so the FHIR XML has no namespace.
 */
 msg.appendChild(&lt;birthDate value=&quot;1980-01-01&quot;/&gt;);</code>
       </properties>

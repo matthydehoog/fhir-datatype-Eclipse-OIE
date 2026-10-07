@@ -120,7 +120,7 @@ public class FhirDataTypeCodeTemplatePlugin extends DataTypeCodeTemplatePlugin {
                 "Sets the value attribute of an existing element." + STRIP_NAMESPACES_NOTE));
         templates.add(code("Add a FHIR element", filterTransformer,
                 "msg.appendChild(<birthDate value=\"1980-01-01\"/>);",
-                "Adds an element with a value attribute. FHIR XML requires the element order of the specification: with XML output, insert it at the right place (e.g. msg.insertChildAfter(msg.gender, ...))." + STRIP_NAMESPACES_NOTE));
+                "Adds an element with a value attribute. The place does not matter: the outbound message is written in the element order of the specification." + STRIP_NAMESPACES_NOTE));
         templates.add(code("Iterate FHIR Bundle entries", filterTransformer,
                 "for each (var entry in msg.entry) {\n"
                 + "    var resource = entry.resource.children()[0];\n"

@@ -23,7 +23,7 @@ const DEF = {
       fields: [
         opt("fhirVersion", "FHIR Version", ["R4"], "R4", "The FHIR version of the messages. Used for validation and for converting between JSON and XML."),
         bool("stripNamespaces", "Strip Namespaces", true, "If checked, the FHIR namespace (http://hl7.org/fhir) is removed from the XML the transformer works on, so you can write msg.name.family.@value. It is put back when the message leaves the transformer. The XHTML namespace of narratives (text.div) is kept."),
-        opt("outputFormat", "Output Format", ["JSON", "XML"], "JSON", "The format of the outbound message (the encoded data): FHIR JSON or FHIR XML. Messages come in as either; the transformer always works on FHIR XML."),
+        opt("outputFormat", "Output Format", ["JSON", "XML"], "JSON", "The format of the outbound message (the encoded data): FHIR JSON or FHIR XML. Messages come in as either; the transformer always works on FHIR XML. After a transformer the FHIR engine writes the message in the element order of the specification."),
         bool("prettyPrint", "Pretty Print", true, "If checked, outbound JSON and XML created by the FHIR engine are indented."),
         bool("validateInbound", "Validate Inbound", true, "If checked, every inbound message is validated against the FHIR specification and the profiles below: structure, data types, cardinality, required elements, value set bindings and invariants."),
         bool("validateOutbound", "Validate Outbound", false, "If checked, the outbound message is validated too, after the transformer. An invalid outbound message is always rejected."),

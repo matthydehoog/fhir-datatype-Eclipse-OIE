@@ -108,7 +108,7 @@ public class FhirSerializer implements IMessageSerializer {
     public String transformWithoutSerializing(String message, MessageSerializer outboundSerializer) throws MessageSerializerException {
         checkInbound(message);
         if (outboundSerializer instanceof FhirSerializer) {
-            return ((FhirSerializer) outboundSerializer).encode(message);
+            return ((FhirSerializer) outboundSerializer).encode(message, false);
         }
         return null;
     }
@@ -117,11 +117,15 @@ public class FhirSerializer implements IMessageSerializer {
 
     @Override
     public String fromXML(String source) throws MessageSerializerException {
-        return encode(FhirXml.addNamespace(source.trim()));
+        return encode(FhirXml.addNamespace(source.trim()), true);
     }
 
-    /** A FHIR message (JSON, or XML with namespace) in the output format, validated when asked. */
-    String encode(String message) throws MessageSerializerException {
+    /**
+     * A FHIR message (JSON, or XML with namespace) in the output format, validated when asked.
+     * XML that comes out of a transformer is written again by the FHIR engine, so its elements are
+     * in the order of the specification; a message that did not pass a transformer is left as is.
+     */
+    String encode(String message, boolean fromTransformer) throws MessageSerializerException {
         if (properties.isValidateOutbound()) {
             // Before converting: the conversion refuses what it cannot represent, with a less useful message.
             FhirValidation validation = validate(message);
@@ -138,6 +142,9 @@ public class FhirSerializer implements IMessageSerializer {
                 output = engine("convert FHIR XML to JSON").toJson(message, version, properties.isPrettyPrint());
             } else if (in == FhirXml.Format.JSON && out == OutputFormat.XML) {
                 output = engine("convert FHIR JSON to XML").toXml(message, version, properties.isPrettyPrint());
+            } else if (in == FhirXml.Format.XML && fromTransformer && FhirEngineLoader.isServer()) {
+                // The transformer may have added elements anywhere; FHIR XML needs the order of the specification.
+                output = engine("write FHIR XML").reorderXml(message, version, properties.isPrettyPrint());
             } else {
                 output = message;
             }

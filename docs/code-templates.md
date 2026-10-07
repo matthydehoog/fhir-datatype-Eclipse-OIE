@@ -58,7 +58,7 @@ The transformer works on FHIR XML. These templates assume **Strip Namespaces** i
 | --- | --- | --- |
 | Read a FHIR value | `msg.name[0].family.@value.toString()` | The path. FHIR XML keeps values in the `value` attribute, so a path ends in `.@value`. |
 | Set a FHIR value | `msg.gender.@value = 'female';` | The path and the value. |
-| Add a FHIR element | `msg.appendChild(<birthDate value="1980-01-01"/>);` | With XML output, FHIR requires the element order of the specification: use `msg.insertChildAfter(msg.gender, ...)` instead. With JSON output the order does not matter. |
+| Add a FHIR element | `msg.appendChild(<birthDate value="1980-01-01"/>);` | The order does not matter: the outbound message, JSON or XML, is written in the element order of the specification. |
 | Iterate FHIR Bundle entries | `for each (var entry in msg.entry)` with `entry.resource.children()[0]` | What to do per resource; `localName()` gives its type. |
 | Find a FHIR coding by system | `msg.code.coding.(system.@value == 'http://loinc.org').code.@value` | The path to the CodeableConcept and the system. |
 | Find a FHIR extension by URL | `msg.extension.(@url == '...')` | The extension URL; read the value with e.g. `.valueString.@value`. |

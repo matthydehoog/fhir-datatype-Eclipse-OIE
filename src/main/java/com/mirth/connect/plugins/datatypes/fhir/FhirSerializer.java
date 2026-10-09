@@ -96,6 +96,7 @@ public class FhirSerializer implements IMessageSerializer {
 
     @Override
     public String toXML(String source) throws MessageSerializerException {
+        refuseDoctype(source);
         checkInbound(source);
         try {
             return FhirXml.toTransformerXml(source, properties.isStripNamespaces());
@@ -106,6 +107,7 @@ public class FhirSerializer implements IMessageSerializer {
 
     @Override
     public String transformWithoutSerializing(String message, MessageSerializer outboundSerializer) throws MessageSerializerException {
+        refuseDoctype(message);
         checkInbound(message);
         if (outboundSerializer instanceof FhirSerializer) {
             return ((FhirSerializer) outboundSerializer).encode(message, false);
@@ -117,6 +119,7 @@ public class FhirSerializer implements IMessageSerializer {
 
     @Override
     public String fromXML(String source) throws MessageSerializerException {
+        refuseDoctype(source);
         return encode(FhirXml.addNamespace(source.trim()), true);
     }
 
@@ -157,6 +160,14 @@ public class FhirSerializer implements IMessageSerializer {
     }
 
     // ------------------------------------------------------------------ validation
+
+    /** FHIR XML with a DTD is refused before anything parses it (see FhirXml.hasDoctype). */
+    private static void refuseDoctype(String message) throws MessageSerializerException {
+        if (FhirXml.hasDoctype(message)) {
+            String text = "The FHIR message was refused: " + FhirXml.DOCTYPE_REFUSED;
+            throw new MessageSerializerException(text, null, text);
+        }
+    }
 
     private void checkInbound(String message) throws MessageSerializerException {
         if (!properties.isValidateInbound()) {

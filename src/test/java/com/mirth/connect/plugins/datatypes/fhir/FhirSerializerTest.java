@@ -8,6 +8,7 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -156,6 +157,30 @@ public class FhirSerializerTest {
         in.setValidateInbound(false);
         String xml = "<Patient xmlns=\"http://hl7.org/fhir\"><gender value=\"male\"/><id value=\"p1\"/></Patient>";
         assertEquals(xml, serializer(in).transformWithoutSerializing(xml, serializer(xmlOut())));
+    }
+
+    /** An XXE attempt: an external entity that would read a local file. */
+    private static final String XXE_PATIENT = "<?xml version=\"1.0\"?>\n<!DOCTYPE Patient [<!ENTITY xxe SYSTEM \"file:///c:/windows/win.ini\">]>\n"
+            + "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"p1\"/><name><family value=\"&xxe;\"/></name></Patient>";
+
+    private static void assertRefused(String what, Callable<?> call) {
+        try {
+            call.call();
+            fail(what + ": expected the DOCTYPE to be refused");
+        } catch (Exception e) {
+            assertTrue(what + ": " + e.getMessage(), e.getMessage().contains("must not contain a DOCTYPE"));
+        }
+    }
+
+    @Test
+    public void refusesXmlWithADoctypeOnEveryPath() {
+        FhirSerializationProperties accept = new FhirSerializationProperties();
+        accept.setInvalidMessages(InvalidMessages.Accept);
+        assertRefused("inbound", () -> serializer(accept).toXML(XXE_PATIENT));
+        assertRefused("without transformer", () -> serializer(accept).transformWithoutSerializing(XXE_PATIENT, serializer(xmlOut())));
+        assertRefused("outbound", () -> serializer(xmlOut()).fromXML(XXE_PATIENT));
+        assertRefused("FhirTools.validate", () -> FhirTools.validate(XXE_PATIENT));
+        assertRefused("FhirTools.toJson", () -> FhirTools.toJson(XXE_PATIENT));
     }
 
     @Test

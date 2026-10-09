@@ -167,6 +167,21 @@ See [docs/code-templates.md](docs/code-templates.md) for how to use them, what e
 - **XML output after a transformer** is written again by the FHIR engine, so its element order is always that of the specification. XML comments and the formatting of the transformer are not kept; *Pretty Print* decides the layout.
 - **Bundles** are one message, unless *Process Batch* is on in the source connector (see [Batch processing](#batch-processing)).
 - **Accept on outbound** does not exist: an invalid outbound message is always rejected, because there is no later step to handle it.
+- **A DOCTYPE is refused**: FHIR XML with a `<!DOCTYPE …>` ends in ERROR (see [Security: XML External Entities](#security-xml-external-entities-xxe)).
+
+## Security: XML External Entities (XXE)
+
+An XXE attack hides a DTD with entity declarations in an XML message, so that the parser reads a local file (for example a configuration with passwords) or calls an internal address. Several such vulnerabilities were found in HAPI FHIR and `org.hl7.fhir.core`: [CVE-2024-45294](https://advisories.gitlab.com/pkg/maven/ca.uhn.hapi.fhir/org.hl7.fhir.utilities/CVE-2024-45294/), [CVE-2024-51132](https://github.com/advisories/GHSA-4cf2-cxp3-rjr7), [CVE-2024-52007](https://github.com/advisories/GHSA-gr3c-q7xf-47vh) and [CVE-2026-55471](https://github.com/advisories/GHSA-2f55-g35j-5jmf).
+
+This data type is not affected by them:
+
+- It ships **HAPI FHIR 8.12.1 with `org.hl7.fhir.core` 6.9.12**, which contains the fixes for all four (the last one was fixed in 6.9.10).
+- Its own XML handling does not resolve entities: the Bundle splitter does not allow a DOCTYPE, and the HAPI parser refuses undeclared entities.
+- A probe with an external entity, a parameter entity and a "billion laughs" through every XML path (inbound validation, to the transformer, JSON and XML output, `FhirTools`, the Bundle splitter) leaked nothing.
+
+As an extra line of defence, since **1.4.1** the data type refuses FHIR XML with a `<!DOCTYPE …>` before anything parses it, inbound, without a transformer, outbound and in `FhirTools`, with the error *"FHIR XML must not contain a DOCTYPE (DTD) declaration"*. The FHIR specification does not allow DTDs, so valid FHIR is never affected. This also keeps a DOCTYPE away from the engine's own XML handling in the transformer.
+
+Keep the data type up to date: a new HAPI FHIR version is included in a new release of this plugin.
 
 ## Examples
 

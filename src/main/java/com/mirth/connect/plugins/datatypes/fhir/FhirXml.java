@@ -23,6 +23,10 @@ public final class FhirXml {
     public static final String FHIR_NS = "http://hl7.org/fhir";
     public static final String XHTML_NS = "http://www.w3.org/1999/xhtml";
 
+    /** Why FHIR XML with a DOCTYPE is refused (see {@link #hasDoctype}). */
+    public static final String DOCTYPE_REFUSED = "FHIR XML must not contain a DOCTYPE (DTD) declaration. "
+            + "The FHIR specification does not allow DTDs, and they can be used for XML External Entity (XXE) attacks.";
+
     public enum Format {
         JSON, XML
     }
@@ -45,6 +49,9 @@ public final class FhirXml {
             return Format.JSON;
         }
         if (c == '<') {
+            if (hasDoctype(message)) {
+                throw new IllegalArgumentException(DOCTYPE_REFUSED);
+            }
             return Format.XML;
         }
         throw new IllegalArgumentException("The message is neither FHIR JSON (starting with '{') nor FHIR XML (starting with '<').");
@@ -257,6 +264,36 @@ public final class FhirXml {
     private static void indent(StringBuilder sb, int depth) {
         for (int i = 0; i < depth; i++) {
             sb.append("  ");
+        }
+    }
+
+    /**
+     * True when the XML prolog (before the root element) has a DOCTYPE. FHIR XML may not contain a
+     * DTD, and a DTD is how XML External Entity (XXE) attacks get in, so such a message is refused
+     * before anything parses it. A "<!DOCTYPE" inside the resource (e.g. in a comment) does not count.
+     */
+    public static boolean hasDoctype(String xml) {
+        if (xml == null) {
+            return false;
+        }
+        int i = 0;
+        while (true) {
+            i = xml.indexOf('<', i);
+            if (i < 0 || i + 1 >= xml.length()) {
+                return false;
+            }
+            if (xml.charAt(i + 1) == '?') {
+                i = xml.indexOf("?>", i);
+            } else if (xml.startsWith("<!--", i)) {
+                i = xml.indexOf("-->", i);
+            } else {
+                // The first other markup is either the DOCTYPE or the root element.
+                return xml.regionMatches(true, i, "<!DOCTYPE", 0, 9);
+            }
+            if (i < 0) {
+                return false;
+            }
+            i++;
         }
     }
 

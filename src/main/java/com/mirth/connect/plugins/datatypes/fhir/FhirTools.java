@@ -54,6 +54,7 @@ public final class FhirTools {
 
     /** FHIR XML (with or without the FHIR namespace, e.g. msg.toString()) to FHIR JSON. */
     public static String toJson(String xml) throws Exception {
+        FhirXml.detect(xml); // refuses FHIR XML with a DOCTYPE
         return FhirEngineLoader.engine().toJson(FhirXml.addNamespace(xml.trim()), "R4", true);
     }
 

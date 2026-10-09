@@ -11,6 +11,22 @@ import org.junit.Test;
 public class FhirXmlTest {
 
     @Test
+    public void findsADoctypeOnlyInTheProlog() {
+        assertTrue(FhirXml.hasDoctype("<!DOCTYPE Patient [<!ENTITY x SYSTEM \"file:///c:/secret.txt\">]><Patient/>"));
+        assertTrue(FhirXml.hasDoctype("<?xml version=\"1.0\"?>\n<!-- export -->\n<!doctype Patient><Patient/>"));
+        assertFalse(FhirXml.hasDoctype("<?xml version=\"1.0\"?>\n<!-- note --><?pi x?><Patient xmlns=\"http://hl7.org/fhir\"/>"));
+        // Inside the resource it is only text, and harmless.
+        assertFalse(FhirXml.hasDoctype("<Patient><!-- <!DOCTYPE x> --><id value=\"1\"/></Patient>"));
+        assertFalse(FhirXml.hasDoctype("{\"resourceType\":\"Patient\"}"));
+        try {
+            FhirXml.detect("<!DOCTYPE Patient><Patient/>");
+            fail("expected the DOCTYPE to be refused");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("DOCTYPE"));
+        }
+    }
+
+    @Test
     public void convertsJsonFollowingTheFhirRules() {
         String json = "{\"resourceType\":\"Patient\",\"id\":\"p1\","
                 + "\"extension\":[{\"url\":\"http://example.org/x\",\"valueString\":\"a & b\"}],"

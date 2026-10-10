@@ -197,6 +197,8 @@ mvn package
 
 The result is `target/datatype-fhir-<version>.zip`. The plugin jars target Java 11; the FHIR engine needs Java 17 (HAPI FHIR 8), which OIE ships with.
 
+See the [development guide](docs/development.md) for how to install the engine jars, the architecture, testing and releasing.
+
 ## License
 
 [Mozilla Public License 2.0](LICENSE). HAPI FHIR is licensed under the Apache License 2.0.

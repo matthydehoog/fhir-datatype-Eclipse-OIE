@@ -58,7 +58,10 @@ public final class FhirTools {
         if (FhirXml.detect(source) == FhirXml.Format.XML) {
             source = FhirXml.addNamespace(source);
         }
-        return new FhirValidation(FhirEngineLoader.engine().validate(source, properties.engineOptions()), FailOn.Errors);
+        FhirEngine engine = FhirEngineLoader.engine();
+        FhirValidation validation = new FhirValidation(engine.validate(source, properties.engineOptions()), FailOn.Errors);
+        FhirValidatorUsage.release(engine);
+        return validation;
     }
 
     /** FHIR R4 XML (with or without the FHIR namespace, e.g. msg.toString()) to FHIR JSON. */

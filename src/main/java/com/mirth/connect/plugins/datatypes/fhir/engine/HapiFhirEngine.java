@@ -182,7 +182,11 @@ public final class HapiFhirEngine implements FhirEngine {
                 } else {
                     String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
                     IParser parser = name.endsWith(".xml") ? ctx.newXmlParser() : ctx.newJsonParser();
-                    add(support, parser.parseResource(text));
+                    IBaseResource resource = parser.parseResource(text);
+                    if ("StructureDefinition".equals(resource.fhirType())) {
+                        checkVersion(ctx, ctx.newTerser().getSinglePrimitiveValueOrNull(resource, "fhirVersion"), "StructureDefinition " + file.getName());
+                    }
+                    add(support, resource);
                 }
             } catch (Exception e) {
                 throw new IllegalArgumentException("Cannot load profile file " + file.getAbsolutePath() + ": " + e.getMessage(), e);
@@ -196,6 +200,7 @@ public final class HapiFhirEngine implements FhirEngine {
         try (InputStream in = new FileInputStream(file)) {
             npm = NpmPackage.fromPackage(in);
         }
+        checkVersion(ctx, npm.fhirVersionList(), "Package " + npm.vid());
         IParser parser = ctx.newJsonParser();
         for (String resourceFile : npm.listResources(CONFORMANCE_TYPES.toArray(new String[0]))) {
             try (InputStream in = npm.loadResource(resourceFile)) {
@@ -231,12 +236,44 @@ public final class HapiFhirEngine implements FhirEngine {
 
     // ------------------------------------------------------------------ helpers
 
-    /** Only R4 for now; a new version needs its structures and validation-resources libraries. */
+    /** Each version needs its structures and validation-resources libraries in lib/. */
     private static FhirContext context(String fhirVersion) {
-        if (fhirVersion == null || fhirVersion.isEmpty() || fhirVersion.equalsIgnoreCase("R4")) {
-            return FhirContext.forCached(FhirVersionEnum.R4);
+        String version = fhirVersion == null ? "" : fhirVersion.trim().toUpperCase();
+        switch (version) {
+            case "":
+            case "R4":
+                return FhirContext.forCached(FhirVersionEnum.R4);
+            case "R4B":
+                return FhirContext.forCached(FhirVersionEnum.R4B);
+            case "R5":
+                return FhirContext.forCached(FhirVersionEnum.R5);
+            default:
+                throw new IllegalArgumentException("FHIR version " + fhirVersion + " is not supported. Use R4, R4B or R5.");
         }
-        throw new IllegalArgumentException("FHIR version " + fhirVersion + " is not supported.");
+    }
+
+    /**
+     * Throws when profiles declare another FHIR version than the channel's: HAPI would otherwise load
+     * them and report confusing errors (or none) for every message. Compares major.minor, so 4.0.0
+     * and 4.0.1 are both R4.
+     */
+    private static void checkVersion(FhirContext ctx, String declared, String what) {
+        if (declared == null || declared.trim().isEmpty()) {
+            return;
+        }
+        FhirVersionEnum expected = ctx.getVersion().getVersion();
+        for (String version : declared.split(",")) {
+            if (majorMinor(version).equals(majorMinor(expected.getFhirVersionString()))) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException(what + " is for FHIR " + declared.trim() + ", but FHIR Version is " + expected.name() + " ("
+                + expected.getFhirVersionString() + "). Use profiles for " + expected.name() + ", or set FHIR Version to the version of the profiles.");
+    }
+
+    private static String majorMinor(String version) {
+        String[] parts = version.trim().split("\\.");
+        return parts.length < 2 ? version.trim() : parts[0] + "." + parts[1];
     }
 
     private static IParser strict(IParser parser) {

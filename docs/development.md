@@ -73,7 +73,7 @@ install client-core   server-lib/mirth-client-core.jar
 mvn clean package
 ```
 
-The result is `target/datatype-fhir-<version>.zip`, about 80 MB. Always use `clean`: `target/lib` keeps jars from an earlier build, and a dependency you excluded would otherwise still end up in the zip.
+The result is `target/datatype-fhir-<version>.zip`, about 117 MB. Always use `clean`: `target/lib` keeps jars from an earlier build, and a dependency you excluded would otherwise still end up in the zip.
 
 `mvn package` runs the tests first. Add `-DskipTests` to skip them, or `-o` to build offline once everything is downloaded.
 
@@ -200,7 +200,7 @@ System properties for development:
 `HapiFhirEngine.build` creates a `FhirValidator` with this support chain, in this order:
 
 1. `PrePopulatedValidationSupport` with the profiles from *Profile Packages*: `.tgz` NPM packages and single conformance resources (StructureDefinition, ValueSet, CodeSystem, ConceptMap, NamingSystem) in JSON or XML. Other resources in a package are skipped.
-2. `DefaultProfileValidationSupport`: the FHIR R4 specification.
+2. `DefaultProfileValidationSupport`: the specification of the chosen FHIR version (R4, R4B or R5).
 3. `CommonCodeSystemsTerminologyService`, `InMemoryTerminologyServerValidationSupport`, `SnapshotGeneratingValidationSupport`.
 4. `RemoteTerminologyServiceValidationSupport`, only when a terminology server is set.
 5. `UnknownCodeSystemWarningValidationSupport` with the *Unknown Code Systems* severity.
@@ -210,6 +210,8 @@ The instance validator refuses unknown profiles, accepts unknown extensions when
 Building a validator takes seconds and about 300 MB of heap, so validators are cached per combination of options. The required profile is passed per call and is not part of the cache key. `FhirSerializer` starts building in a background thread (`warmUp`) when a channel with validation is deployed, so the first message does not wait as long.
 
 Profile files are read once, when the validator is built: after changing them, restart the channel or the server.
+
+`loadProfiles` checks that profiles match the *FHIR Version* (`checkVersion`, on major.minor): the `fhirVersions` in a package's `package.json` and the `fhirVersion` of a single StructureDefinition. A mismatch fails the build of the validator, so every message gets the error, instead of HAPI silently validating against profiles of another version.
 
 ## Properties and saved channels
 
@@ -250,9 +252,10 @@ The web administrator's properties panel is `webadmin/web/plugin.js`. It is a st
 
 ## Dependencies
 
-HAPI FHIR pulls in far more than validating R4 needs. `pom.xml` excludes what was found unnecessary, which keeps the zip at about 80 MB. The comments in `pom.xml` list what was tried:
+HAPI FHIR pulls in far more than validating needs. `pom.xml` excludes what was found unnecessary. The comments in `pom.xml` list what was tried:
 
-- **Excluded:** dstu2, dstu2016may, r4b, PlantUML, JGit, SQLite, Saxon, OGNL, xmlsec, commonmark, Apache httpclient (from `hapi-fhir-validation`), OkHttp/Okio/Kotlin.
+- **Per FHIR version:** `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` for R4, R4B and R5. `hapi-fhir-structures-r5` gets the same exclusions as `hapi-fhir-validation`, otherwise it brings PlantUML and JGit back.
+- **Excluded:** dstu2, dstu2016may, PlantUML, JGit, SQLite, Saxon, OGNL, xmlsec, commonmark, Apache httpclient (from `hapi-fhir-validation`), OkHttp/Okio/Kotlin.
 - **Tried and needed:** dstu3 and the convertors (profiles are converted internally), Thymeleaf, ICU4J, nimbus-jose-jwt (Bundle validation), `hapi-fhir-client` with its HTTP client (terminology server).
 
 When you change an exclusion, run all tests **and** validate a Bundle, a resource against a Nictiz package and a code against a terminology server in a real OIE: a missing class often only shows on one path.
@@ -273,13 +276,14 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 54 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 63 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |
 | `FhirSerializerTest` | Inbound and outbound conversion, validation, reject and accept, element order, DOCTYPE refusal. |
 | `FhirXmlTest` | Format detection, JSON to XML, namespaces, `hasDoctype`. |
 | `FhirToolsTest` | The script functions. |
+| `FhirVersionTest` | R4B and R5: version-only elements and resources, conversion, `FhirTools` with a version, profile files and packages of another version. |
 | `FhirBundleSplitterTest`, `server/FhirBatchAdaptorTest` | Batch splitting and source map variables, using `examples/observation-bundle.json`. |
 | `server/FhirAutoResponderTest` | OperationOutcome responses and HTTP status. |
 | `client/FhirDataTypeCodeTemplatePluginTest` | Templates, their contexts, the snippets in Rhino, and the example library. |
@@ -298,15 +302,15 @@ The server log shows HAPI's warnings and errors. *The FHIR engine is not availab
 
 ## Common changes
 
-### Supporting another FHIR version (R4B, R5)
+### Supporting another FHIR version (R6)
 
-The design keeps this a local change:
+R4B and R5 were added this way (1.5.0); a next version, once HAPI FHIR supports it, follows the same steps:
 
-1. Add the version to `FhirSerializationProperties.FhirVersion` (saved channels keep R4).
-2. Add `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` to `pom.xml`, and remove the matching exclusion (r4b is excluded today).
+1. Add the version to `FhirSerializationProperties.FhirVersion` (saved channels keep R4) and to the error texts that list the versions (`FhirTools`, `HapiFhirEngine.context()`).
+2. Add `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` to `pom.xml`, with the exclusions `hapi-fhir-validation` has, and check the dependency tree for new libraries.
 3. Map the version in `HapiFhirEngine.context()`.
-4. `FhirTools.toJson` and `toXml` use `"R4"`; give them a version parameter or overload.
-5. `FhirOperationOutcome` writes R4; check that the structure is the same in the new version.
+4. Add a test with an element or resource that only exists in the new version (see `FhirVersionTest`).
+5. `FhirOperationOutcome` writes one structure for all versions; check that it is the same in the new version.
 6. Add the option to `webadmin/web/plugin.js` and the README.
 
 ### Changing what goes into a message

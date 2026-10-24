@@ -24,9 +24,9 @@ import com.mirth.connect.model.datatype.SerializationProperties;
  */
 public class FhirSerializationProperties extends SerializationProperties {
 
-    /** Only R4 for now; R4B and R5 can be added later without changing saved channels. */
+    /** R4 (4.0.1), R4B (4.3.0) and R5 (5.0.0). Channels saved before R4B and R5 were added keep R4. */
     public enum FhirVersion {
-        R4
+        R4, R4B, R5
     }
 
     public enum OutputFormat {
@@ -64,7 +64,7 @@ public class FhirSerializationProperties extends SerializationProperties {
     @Override
     public Map<String, DataTypePropertyDescriptor> getPropertyDescriptors() {
         Map<String, DataTypePropertyDescriptor> p = new LinkedHashMap<>();
-        p.put("fhirVersion", new DataTypePropertyDescriptor(getFhirVersion(), "FHIR Version", "The FHIR version of the messages. Used for validation and for converting between JSON and XML.", PropertyEditorType.OPTION, FhirVersion.values()));
+        p.put("fhirVersion", new DataTypePropertyDescriptor(getFhirVersion(), "FHIR Version", "The FHIR version of the messages: R4 (4.0.1), R4B (4.3.0) or R5 (5.0.0). Used for validation and for converting between JSON and XML. Profile packages must be for the same version.", PropertyEditorType.OPTION, FhirVersion.values()));
         p.put("stripNamespaces", new DataTypePropertyDescriptor(isStripNamespaces(), "Strip Namespaces", "If checked, the FHIR namespace (http://hl7.org/fhir) is removed from the XML the transformer works on, so you can write msg.name.family.@value instead of using namespaces. It is put back when the message leaves the transformer. The XHTML namespace of narratives (text.div) is kept.", PropertyEditorType.BOOLEAN));
         p.put("outputFormat", new DataTypePropertyDescriptor(getOutputFormat(), "Output Format", "The format of the outbound message (the encoded data): FHIR JSON or FHIR XML. Messages come in as either; the transformer always works on FHIR XML. After a transformer the FHIR engine writes the message in the element order of the specification.", PropertyEditorType.OPTION, OutputFormat.values()));
         p.put("prettyPrint", new DataTypePropertyDescriptor(isPrettyPrint(), "Pretty Print", "If checked, outbound JSON and XML created by the FHIR engine are indented.", PropertyEditorType.BOOLEAN));

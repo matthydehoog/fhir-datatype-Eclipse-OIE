@@ -5,11 +5,11 @@ An HL7 FHIR data type for [Eclipse Open Integration Engine](https://github.com/O
 - **FHIR JSON and FHIR XML in**: the format is detected per message.
 - **FHIR XML in the transformer** (E4X), optionally without the FHIR namespace: `msg.name.family.@value`.
 - **FHIR JSON or FHIR XML out**, chosen per connector.
-- **Validation** with [HAPI FHIR](https://hapifhir.io) against the FHIR R4 specification and your own profiles and packages (for example Nictiz zib2020 / nl-core). It checks structure, data types, cardinality, required elements, value set bindings and invariants.
+- **Validation** with [HAPI FHIR](https://hapifhir.io) against the FHIR R4, R4B or R5 specification and your own profiles and packages (for example Nictiz zib2020 / nl-core). It checks structure, data types, cardinality, required elements, value set bindings and invariants.
 - **Invalid messages** are rejected (status ERROR, with the issues as the error) or accepted with the issues in the connector map; you choose per connector.
 - **Batch processing**: a Bundle can be split into one message per entry, each validated on its own.
 
-FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later without changing saved channels.
+FHIR R4 (4.0.1), R4B (4.3.0) and R5 (5.0.0) are supported, chosen per connector with *FHIR Version*. Channels saved with an earlier version of the plugin keep R4.
 
 ## Online course
 
@@ -25,13 +25,13 @@ FHIR R4 (4.0.1) is supported. The design allows R4B and R5 to be added later wit
 
 OIE's default heap is only 256 MB (`-Xmx256m` in `conf/base_includes.vmoptions`, in 4.6.0 and 4.7.0 alike; an installer may have set more). That is not enough for validation: the first message that needs the validator fails with `java.lang.OutOfMemoryError: Java heap space` (for example while loading the UCUM units), and the message stays at RECEIVED. So set `-Xmx1g` in `conf/custom.vmoptions` before you deploy a FHIR channel, also on a new or upgraded 4.7.0 server whose `custom.vmoptions` has no `-Xmx` line yet.
 
-**Size.** HAPI FHIR and its libraries make the zip about 80 MB. They sit in `extensions/datatype-fhir/lib/` and are loaded in the plugin's own class loader, so they never clash with the libraries OIE ships.
+**Size.** HAPI FHIR and its libraries make the zip about 117 MB (the specifications of R4, R4B and R5 included). They sit in `extensions/datatype-fhir/lib/` and are loaded in the plugin's own class loader, so they never clash with the libraries OIE ships.
 
 ## Properties
 
 | Property | Default | What it does |
 | --- | --- | --- |
-| FHIR Version | R4 | The FHIR version of the messages. |
+| FHIR Version | R4 | The FHIR version of the messages: R4, R4B or R5. Used for validation and for converting between JSON and XML; profile packages must be for the same version. |
 | Strip Namespaces | on | Removes the FHIR namespace from the transformer XML (the XHTML namespace of `text.div` stays) and puts it back afterwards. |
 | Output Format | JSON | FHIR JSON or FHIR XML for the outbound message. Both are written by the FHIR engine in the element order of the specification. |
 | Pretty Print | on | Indents JSON and XML created by the FHIR engine. |
@@ -57,7 +57,7 @@ Inbound validation sets these variables, also when invalid messages are accepted
 | `fhirIssues` | one line per issue: `error Patient.gender (line 1, column 39): ...` |
 | `fhirOperationOutcome` | the issues as a FHIR `OperationOutcome` resource (JSON), ready to return to the sender |
 | `mirth_type` | resource type, e.g. `Patient` or `Bundle` |
-| `mirth_version` | `R4` |
+| `mirth_version` | the *FHIR Version*: `R4`, `R4B` or `R5` |
 
 For example, a source filter that only lets valid messages through, with *Invalid Messages* on *Accept*:
 
@@ -118,8 +118,10 @@ To build your own response, use `$('fhirOperationOutcome')`, which is filled whe
 
 Put the packages or files on the server and enter the folder in *Profile Packages*, for example `C:\fhir\profiles` or `/opt/oie/fhir/profiles`. A folder is read with its subfolders. Accepted:
 
-- **FHIR packages** (`.tgz`) as downloaded from [packages.fhir.org](https://packages.fhir.org) or [simplifier.net](https://simplifier.net). Include every package a package depends on (`hl7.fhir.r4.core` is built in). For the Dutch profiles: `nictiz.fhir.nl.r4.nl-core` and `nictiz.fhir.nl.r4.zib2020`.
+- **FHIR packages** (`.tgz`) as downloaded from [packages.fhir.org](https://packages.fhir.org) or [simplifier.net](https://simplifier.net). Include every package a package depends on (the core package of the chosen version, such as `hl7.fhir.r4.core`, is built in). For the Dutch profiles: `nictiz.fhir.nl.r4.nl-core` and `nictiz.fhir.nl.r4.zib2020`.
 - **Conformance resources**: StructureDefinition, ValueSet, CodeSystem, ConceptMap and NamingSystem files in JSON or XML.
+
+Packages and profiles must be for the channel's *FHIR Version*: the `fhirVersions` of a package and the `fhirVersion` of a StructureDefinition are checked when the validator is built. An R4 package such as the Nictiz zib2020 on an R5 channel is refused with an error like *"Package nictiz.fhir.nl.r4.zib2020#0.12.1-beta.1 is for FHIR 4.0.1, but FHIR Version is R5 (5.0.0)"*, on every message until you fix the setting.
 
 A resource is validated against the profiles in its `meta.profile`. Set *Required Profile* to validate every message against one profile, for example `http://nictiz.nl/fhir/StructureDefinition/nl-core-Patient`. An unknown profile is an error.
 
@@ -154,7 +156,7 @@ if (!result.isValid()) {
 var json = FhirTools.toJson(msg.toString()); // transformer XML to JSON
 ```
 
-`FhirTools.validate(resource, requiredProfile, profilePackages)` validates against your own profiles. `validate` and `toJson` accept FHIR XML with or without the FHIR namespace, so `msg.toString()` works in a transformer with *Strip Namespaces* on.
+`FhirTools.validate(resource, requiredProfile, profilePackages)` validates against your own profiles. The functions use R4; for R4B or R5 add the version as last argument: `FhirTools.validate(resource, requiredProfile, profilePackages, 'R5')`, `FhirTools.toJson(xml, 'R5')`, `FhirTools.toXml(json, 'R5')`. `validate` and `toJson` accept FHIR XML with or without the FHIR namespace, so `msg.toString()` works in a transformer with *Strip Namespaces* on.
 
 ### Reference list
 

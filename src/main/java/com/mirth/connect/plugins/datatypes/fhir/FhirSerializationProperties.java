@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.mirth.connect.donkey.model.message.SerializationType;
 import com.mirth.connect.donkey.util.DonkeyElement;
 import com.mirth.connect.model.datatype.DataTypePropertyDescriptor;
 import com.mirth.connect.model.datatype.PropertyEditorType;
@@ -29,6 +30,10 @@ public class FhirSerializationProperties extends SerializationProperties {
         R4, R4B, R5
     }
 
+    public enum TransformerFormat {
+        XML, JSON
+    }
+
     public enum OutputFormat {
         JSON, XML
     }
@@ -46,6 +51,7 @@ public class FhirSerializationProperties extends SerializationProperties {
     }
 
     private FhirVersion fhirVersion = FhirVersion.R4;
+    private TransformerFormat transformerFormat = TransformerFormat.XML;
     private Boolean stripNamespaces = Boolean.TRUE;
     private OutputFormat outputFormat = OutputFormat.JSON;
     private Boolean prettyPrint = Boolean.TRUE;
@@ -65,6 +71,7 @@ public class FhirSerializationProperties extends SerializationProperties {
     public Map<String, DataTypePropertyDescriptor> getPropertyDescriptors() {
         Map<String, DataTypePropertyDescriptor> p = new LinkedHashMap<>();
         p.put("fhirVersion", new DataTypePropertyDescriptor(getFhirVersion(), "FHIR Version", "The FHIR version of the messages: R4 (4.0.1), R4B (4.3.0) or R5 (5.0.0). Used for validation and for converting between JSON and XML. Profile packages must be for the same version.", PropertyEditorType.OPTION, FhirVersion.values()));
+        p.put("transformerFormat", new DataTypePropertyDescriptor(getTransformerFormat(), "Transformer Format", "XML: the transformer works on FHIR XML with E4X (msg.name.family.@value). JSON: msg is a JavaScript object of the FHIR JSON (msg.name[0].family), and the outbound message is made from it. With JSON, decimals lose trailing zeros (1.50 becomes 1.5), as in any JavaScript. On outbound properties it sets the format of the outbound template (tmp).", PropertyEditorType.OPTION, TransformerFormat.values()));
         p.put("stripNamespaces", new DataTypePropertyDescriptor(isStripNamespaces(), "Strip Namespaces", "If checked, the FHIR namespace (http://hl7.org/fhir) is removed from the XML the transformer works on, so you can write msg.name.family.@value instead of using namespaces. It is put back when the message leaves the transformer. The XHTML namespace of narratives (text.div) is kept.", PropertyEditorType.BOOLEAN));
         p.put("outputFormat", new DataTypePropertyDescriptor(getOutputFormat(), "Output Format", "The format of the outbound message (the encoded data): FHIR JSON or FHIR XML. Messages come in as either; the transformer always works on FHIR XML. After a transformer the FHIR engine writes the message in the element order of the specification.", PropertyEditorType.OPTION, OutputFormat.values()));
         p.put("prettyPrint", new DataTypePropertyDescriptor(isPrettyPrint(), "Pretty Print", "If checked, outbound JSON and XML created by the FHIR engine are indented.", PropertyEditorType.BOOLEAN));
@@ -87,6 +94,9 @@ public class FhirSerializationProperties extends SerializationProperties {
         }
         if (properties.get("fhirVersion") != null) {
             fhirVersion = (FhirVersion) properties.get("fhirVersion");
+        }
+        if (properties.get("transformerFormat") != null) {
+            transformerFormat = (TransformerFormat) properties.get("transformerFormat");
         }
         if (properties.get("stripNamespaces") != null) {
             stripNamespaces = (Boolean) properties.get("stripNamespaces");
@@ -144,6 +154,23 @@ public class FhirSerializationProperties extends SerializationProperties {
 
     public void setFhirVersion(FhirVersion fhirVersion) {
         this.fhirVersion = fhirVersion;
+    }
+
+    public TransformerFormat getTransformerFormat() {
+        return transformerFormat == null ? TransformerFormat.XML : transformerFormat;
+    }
+
+    public void setTransformerFormat(TransformerFormat transformerFormat) {
+        this.transformerFormat = transformerFormat;
+    }
+
+    /**
+     * What msg is in the transformer. The engine asks the inbound properties for this (and the outbound
+     * properties for the outbound template), so it can differ per connector; see DataTypeFactory.
+     */
+    @Override
+    public SerializationType getSerializationType() {
+        return getTransformerFormat() == TransformerFormat.JSON ? SerializationType.JSON : SerializationType.XML;
     }
 
     public boolean isStripNamespaces() {
@@ -262,6 +289,7 @@ public class FhirSerializationProperties extends SerializationProperties {
     public Map<String, Object> getPurgedProperties() {
         Map<String, Object> purged = new HashMap<>();
         purged.put("fhirVersion", getFhirVersion());
+        purged.put("transformerFormat", getTransformerFormat());
         purged.put("stripNamespaces", isStripNamespaces());
         purged.put("outputFormat", getOutputFormat());
         purged.put("prettyPrint", isPrettyPrint());

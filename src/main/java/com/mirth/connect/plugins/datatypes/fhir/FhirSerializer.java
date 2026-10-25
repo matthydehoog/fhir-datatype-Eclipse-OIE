@@ -38,6 +38,8 @@ public class FhirSerializer implements IMessageSerializer {
     /** The issues as a FHIR OperationOutcome resource (JSON), ready to return to the sender. */
     public static final String OPERATION_OUTCOME_VARIABLE = "fhirOperationOutcome";
 
+    static final String TRANSFORMER_OUTPUT_INVALID = "The transformer output is not valid FHIR";
+
     private static final Logger logger = LogManager.getLogger(FhirSerializer.class);
 
     /** The last message validated on this thread, so each message is validated once. */
@@ -120,6 +122,11 @@ public class FhirSerializer implements IMessageSerializer {
     @Override
     public String fromXML(String source) throws MessageSerializerException {
         refuseDoctype(source);
+        if (FhirXml.detect(source) == FhirXml.Format.JSON) {
+            // Transformer Format JSON: the engine asks the outbound data type for XML all the same, because
+            // it takes the outbound serialization type from deserialization properties, which FHIR has not.
+            return fromJSON(source);
+        }
         return encode(FhirXml.addNamespace(source.trim()), true);
     }
 
@@ -148,13 +155,17 @@ public class FhirSerializer implements IMessageSerializer {
             } else if (in == FhirXml.Format.XML && fromTransformer && FhirEngineLoader.isServer()) {
                 // The transformer may have added elements anywhere; FHIR XML needs the order of the specification.
                 output = engine("write FHIR XML").reorderXml(message, version, properties.isPrettyPrint());
+            } else if (in == FhirXml.Format.JSON && fromTransformer && FhirEngineLoader.isServer()) {
+                // JSON.stringify: one line, and a misspelled element would otherwise go out unnoticed.
+                output = engine("write FHIR JSON").reorderJson(message, version, properties.isPrettyPrint());
             } else {
                 output = message;
             }
         } catch (MessageSerializerException e) {
             throw e;
         } catch (Exception e) {
-            throw error("Error converting FHIR to " + properties.getOutputFormat(), e);
+            // After a transformer the cause is nearly always the script, for example a misspelled element.
+            throw error(fromTransformer ? TRANSFORMER_OUTPUT_INVALID : "Error converting FHIR to " + properties.getOutputFormat(), e);
         }
         return output;
     }
@@ -245,12 +256,27 @@ public class FhirSerializer implements IMessageSerializer {
     }
 
     @Override
-    public String toJSON(String message) throws MessageSerializerException {
-        return null;
+    public String toJSON(String source) throws MessageSerializerException {
+        refuseDoctype(source);
+        checkInbound(source);
+        try {
+            if (FhirXml.detect(source) == FhirXml.Format.JSON) {
+                return source; // as it came in, like the XML path
+            }
+            if (!FhirEngineLoader.isServer()) {
+                // Only the FHIR engine knows which elements are lists; it is not available in the Administrator.
+                throw new IllegalArgumentException("With Transformer Format JSON, use a FHIR JSON message as template.");
+            }
+            return engine("convert FHIR XML to JSON").toJson(FhirXml.addNamespace(source.trim()), properties.getFhirVersion().name(), false);
+        } catch (MessageSerializerException e) {
+            throw e;
+        } catch (Exception e) {
+            throw error("Error converting FHIR to JSON", e);
+        }
     }
 
     @Override
-    public String fromJSON(String message) throws MessageSerializerException {
-        return null;
+    public String fromJSON(String source) throws MessageSerializerException {
+        return encode(source.trim(), true);
     }
 }

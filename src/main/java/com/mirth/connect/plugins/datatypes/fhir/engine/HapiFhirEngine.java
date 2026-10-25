@@ -116,6 +116,15 @@ public final class HapiFhirEngine implements FhirEngine {
     }
 
     @Override
+    public String reorderJson(String json, String fhirVersion, boolean pretty) throws Exception {
+        return withEngineClassLoader(() -> {
+            FhirContext ctx = context(fhirVersion);
+            IBaseResource resource = strict(ctx.newJsonParser()).parseResource(json);
+            return ctx.newJsonParser().setPrettyPrint(pretty).encodeResourceToString(resource);
+        });
+    }
+
+    @Override
     public void warmUp(Map<String, String> options) {
         try {
             withEngineClassLoader(() -> validator(options));

@@ -52,7 +52,6 @@ public class FhirSerializer implements IMessageSerializer {
         }
         properties = p != null ? p : new FhirSerializationProperties();
         if ((properties.isValidateInbound() || properties.isValidateOutbound()) && FhirEngineLoader.isServer()) {
-            FhirValidatorUsage.register(this, properties.engineOptions());
             warmUp();
         }
     }
@@ -204,7 +203,7 @@ public class FhirSerializer implements IMessageSerializer {
             FhirXml.detect(message);
             FhirEngine engine = engine("validate FHIR");
             FhirValidation validation = new FhirValidation(engine.validate(message, properties.engineOptions()), properties.getFailOn());
-            FhirValidatorUsage.release(engine);
+            FhirValidatorUsage.startPeriodicRelease(engine);
             return validation;
         } catch (MessageSerializerException e) {
             throw e;
@@ -226,8 +225,7 @@ public class FhirSerializer implements IMessageSerializer {
         Thread thread = new Thread(() -> {
             try {
                 FhirEngine engine = FhirEngineLoader.engine();
-                // A redeployed channel may have left a validator its new settings no longer use.
-                FhirValidatorUsage.release(engine);
+                FhirValidatorUsage.startPeriodicRelease(engine);
                 engine.warmUp(options);
             } catch (Exception e) {
                 logger.warn("FHIR data type: " + e.getMessage());

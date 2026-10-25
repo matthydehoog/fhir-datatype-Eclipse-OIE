@@ -1,66 +1,39 @@
 package com.mirth.connect.plugins.datatypes.fhir;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.BeforeClass;
+import org.junit.After;
 import org.junit.Test;
-
-import com.mirth.connect.model.datatype.SerializerProperties;
-import com.mirth.connect.plugins.datatypes.fhir.FhirSerializationProperties.FhirVersion;
 
 public class FhirValidatorUsageTest {
 
-    @BeforeClass
-    public static void directEngine() {
-        System.setProperty("fhir.engine.direct", "true");
+    @After
+    public void reset() {
+        FhirValidatorUsage.setInUse(List::of);
     }
 
     @Test
-    public void aSerializerKeepsItsOptionsInUseUntilItIsGone() throws Exception {
-        FhirSerializationProperties p = new FhirSerializationProperties();
-        p.setFhirVersion(FhirVersion.R4B);
-        p.setTerminologyServer("http://usage-test.invalid/fhir"); // options no other test uses
-        Map<String, String> options = p.engineOptions();
-
-        FhirSerializer serializer = new FhirSerializer(new SerializerProperties(p, null, null));
-        assertTrue(FhirValidatorUsage.inUse().contains(options));
-
-        serializer = null; // as when the channel is undeployed
-        for (int i = 0; i < 50 && FhirValidatorUsage.inUse().contains(options); i++) {
-            System.gc();
-            Thread.sleep(100);
-        }
-        assertFalse(FhirValidatorUsage.inUse().contains(options));
-    }
-
-    @Test
-    public void aSerializerWithoutValidationDoesNotHoldAValidator() {
-        FhirSerializationProperties p = new FhirSerializationProperties();
-        p.setValidateInbound(false);
-        p.setTerminologyServer("http://no-validation.invalid/fhir");
-        new FhirSerializer(new SerializerProperties(p, null, null));
-        assertFalse(FhirValidatorUsage.inUse().contains(p.engineOptions()));
-    }
-
-    @Test
-    public void releaseHandsTheOptionsInUseToTheEngine() {
+    public void releaseHandsTheDeployedOptionsToTheEngine() {
         FhirSerializationProperties p = new FhirSerializationProperties();
         p.setTerminologyServer("http://release-test.invalid/fhir");
-        Object owner = new Object();
-        FhirValidatorUsage.register(owner, p.engineOptions());
+        FhirValidatorUsage.setInUse(() -> List.of(p.engineOptions()));
 
         List<Object[]> calls = new ArrayList<>();
         FhirValidatorUsage.releaseNow(new RecordingEngine(calls), 5);
         assertEquals(1, calls.size());
-        assertTrue(((List<?>) calls.get(0)[0]).contains(p.engineOptions()));
+        assertEquals(List.of(p.engineOptions()), calls.get(0)[0]);
         assertEquals(5L, calls.get(0)[1]);
-        owner.hashCode(); // keeps the owner reachable until here
+    }
+
+    @Test
+    public void withoutTheServerPluginNothingCountsAsDeployed() {
+        List<Object[]> calls = new ArrayList<>();
+        FhirValidatorUsage.releaseNow(new RecordingEngine(calls), FhirValidatorUsage.IDLE_MILLIS);
+        assertEquals(List.of(), calls.get(0)[0]);
     }
 
     private static final class RecordingEngine implements FhirEngine {

@@ -6,53 +6,63 @@
 
 package com.mirth.connect.plugins.datatypes.fhir;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
- * Which validator options are still in use, so the engine can drop the validators (and the FHIR
- * specifications, R5 alone is about 500 MB) of channels that were undeployed or changed.
+ * Lets the engine drop the validators, and the FHIR specifications (R5 alone is about 500 MB), that
+ * no deployed channel uses any more.
  *
- * A serializer holds its options for as long as it lives; the engine lets go of the serializers of
- * an undeployed channel, so they disappear from the weak map at the next garbage collection.
- * Callers without a serializer, such as FhirTools in a script, keep their validator for
- * {@link #IDLE_MILLIS} after their last call.
+ * The options in use come from the deployed channels (server.FhirChannelPlugin, which also calls
+ * {@link #releaseNow} after every deploy and undeploy). Validators with other options, such as
+ * those of FhirTools in a script, are kept for {@link #IDLE_MILLIS} after their last use; a check
+ * once a minute releases them also when nothing else happens.
  */
-final class FhirValidatorUsage {
+public final class FhirValidatorUsage {
 
-    static final long IDLE_MILLIS = 15 * 60 * 1000L;
+    public static final long IDLE_MILLIS = 15 * 60 * 1000L;
 
-    private static final long CHECK_INTERVAL_MILLIS = 60 * 1000L;
+    private static volatile Supplier<List<Map<String, String>>> inUse = Collections::emptyList;
 
-    private static final Map<Object, Map<String, String>> OWNERS = new WeakHashMap<>();
-
-    private static long lastCheck = System.currentTimeMillis();
+    private static ScheduledExecutorService timer;
 
     private FhirValidatorUsage() {}
 
-    static synchronized void register(Object owner, Map<String, String> options) {
-        OWNERS.put(owner, options);
+    /** Set by the server plugin: the validator options of the deployed channels. */
+    public static void setInUse(Supplier<List<Map<String, String>>> supplier) {
+        inUse = supplier;
     }
 
-    static synchronized List<Map<String, String>> inUse() {
-        return new ArrayList<>(OWNERS.values());
+    static List<Map<String, String>> inUse() {
+        return inUse.get();
     }
 
-    /** Lets the engine drop what is no longer used; does the work at most once a minute. */
-    static void release(FhirEngine engine) {
-        synchronized (FhirValidatorUsage.class) {
-            long now = System.currentTimeMillis();
-            if (now - lastCheck < CHECK_INTERVAL_MILLIS) {
-                return;
-            }
-            lastCheck = now;
+    /** Starts the periodic check, once the engine validates. */
+    static synchronized void startPeriodicRelease(FhirEngine engine) {
+        if (timer != null) {
+            return;
         }
-        releaseNow(engine, IDLE_MILLIS);
+        timer = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "FHIR validator release");
+            thread.setDaemon(true);
+            return thread;
+        });
+        timer.scheduleWithFixedDelay(() -> {
+            try {
+                releaseNow(engine, IDLE_MILLIS);
+            } catch (RuntimeException e) {
+                // Next minute again; the deployed channels could not be read, for example while the server stops.
+            }
+        }, 1, 1, TimeUnit.MINUTES);
     }
 
-    static void releaseNow(FhirEngine engine, long idleMillis) {
+    /** Drops what the deployed channels do not use and was not used for {@code idleMillis}. */
+    public static void releaseNow(FhirEngine engine, long idleMillis) {
         engine.retainValidators(inUse(), idleMillis);
     }
 }

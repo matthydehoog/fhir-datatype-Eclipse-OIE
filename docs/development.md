@@ -211,11 +211,13 @@ Building a validator takes seconds, so validators are cached per combination of 
 
 **Memory.** The heap goes to the specification, not to the validators: HAPI's `DefaultProfileValidationSupport` keeps it in a static map per FHIR version (`ourImplementations`), shared by all validators of that version. Measured with HAPI 8.12.1: R4 190 MB, R4B 160 MB, R5 490 MB; a second validator of the same version adds almost nothing. That map lives as long as its class loader and has no API to remove an entry, so the plugin drops the cached validators and the specification of a version itself:
 
-- `FhirValidatorUsage` keeps the options of every serializer with validation in a `WeakHashMap`. The engine lets go of the serializers of an undeployed channel, so they leave the map at the next garbage collection.
-- At most once a minute (after a validation, and when a channel is deployed) it calls `FhirEngine.retainValidators` with the options in use. Validators with other options that were not used for 15 minutes (`IDLE_MILLIS`, for `FhirTools` calls from scripts) are dropped.
+- `server.FhirChannelPlugin`, a `ChannelPlugin` registered in `plugin.xml`, gives `FhirValidatorUsage` the options of every FHIR data type with validation in the deployed channels (`FhirChannelOptions`, read from `ChannelController.getDeployedChannelById`). After every deploy and undeploy (the global hooks, which run once all channels of the action are done) it calls `FhirEngine.retainValidators` with those options and no idle time: everything else goes at once, including validators used only from scripts, which are built again when needed.
+- Once the engine has validated, a daemon thread checks every minute with an idle time of 15 minutes (`IDLE_MILLIS`), so validators used only by `FhirTools` are released also when nothing is deployed or undeployed. It does not depend on garbage collection: an idle server hardly collects, which is why tracking serializers in a weak map did not work.
 - When no validator of a version is left, `HapiFhirEngine` drops its own context for that version and removes the version from `ourImplementations` by reflection. The map belongs to this plugin alone, because HAPI is loaded in the plugin's class loader. `HapiFhirEngineRetainTest` fails when a HAPI update renames the field; without it the specification would simply stay loaded, as before 1.5.0.
 
 Validators use a context of their own (`FhirContext.forVersion`), not the static `forCached` one, which only parses and encodes.
+
+Released heap is only reused or returned to the operating system after a garbage collection, and an idle JVM hardly collects. Measured with Java 17 (G1, `-Xmx1g`), R4 and R5 released: without options the heap stayed at 860 MB used for two minutes; with `-XX:G1PeriodicGCInterval=10000` it was 230 MB used after one minute and the committed heap went from 1024 to 734 MB after two. The README advises `-XX:G1PeriodicGCInterval=60000`.
 
 Profile files are read once, when the validator is built: after changing them, restart the channel or the server.
 
@@ -284,7 +286,7 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 69 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 70 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |
@@ -292,7 +294,7 @@ There are 69 tests (JUnit 4). They run without OIE: the engine jars are on the t
 | `FhirXmlTest` | Format detection, JSON to XML, namespaces, `hasDoctype`. |
 | `FhirToolsTest` | The script functions. |
 | `FhirVersionTest` | R4B and R5: version-only elements and resources, conversion, `FhirTools` with a version, profile files and packages of another version. |
-| `FhirValidatorUsageTest`, `engine/HapiFhirEngineRetainTest` | Releasing validators and specifications that are no longer used. |
+| `FhirValidatorUsageTest`, `server/FhirChannelOptionsTest`, `engine/HapiFhirEngineRetainTest` | Releasing validators and specifications that are no longer used. |
 | `FhirBundleSplitterTest`, `server/FhirBatchAdaptorTest` | Batch splitting and source map variables, using `examples/observation-bundle.json`. |
 | `server/FhirAutoResponderTest` | OperationOutcome responses and HTTP status. |
 | `client/FhirDataTypeCodeTemplatePluginTest` | Templates, their contexts, the snippets in Rhino, and the example library. |

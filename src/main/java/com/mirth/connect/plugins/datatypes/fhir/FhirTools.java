@@ -60,7 +60,7 @@ public final class FhirTools {
         }
         FhirEngine engine = FhirEngineLoader.engine();
         FhirValidation validation = new FhirValidation(engine.validate(source, properties.engineOptions()), FailOn.Errors);
-        FhirValidatorUsage.release(engine);
+        FhirValidatorUsage.startPeriodicRelease(engine);
         return validation;
     }
 

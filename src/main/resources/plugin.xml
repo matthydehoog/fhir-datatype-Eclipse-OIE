@@ -7,6 +7,7 @@
 	<description>This plugin provides the HL7 FHIR data type: FHIR JSON and XML in, FHIR XML in the transformer, FHIR JSON or XML out, with validation against the FHIR specification and your own profiles (HAPI FHIR).</description>
 	<serverClasses>
 		<string>com.mirth.connect.plugins.datatypes.fhir.server.FhirDataTypeServerPlugin</string>
+		<string>com.mirth.connect.plugins.datatypes.fhir.server.FhirChannelPlugin</string>
 	</serverClasses>
 	<clientClasses>
 		<string>com.mirth.connect.plugins.datatypes.fhir.client.FhirDataTypeClientPlugin</string>

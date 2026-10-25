@@ -21,7 +21,7 @@ const DEF = {
       label: "Serialization",
       class: `${PKG}.FhirSerializationProperties`,
       fields: [
-        opt("fhirVersion", "FHIR Version", ["R4"], "R4", "The FHIR version of the messages. Used for validation and for converting between JSON and XML."),
+        opt("fhirVersion", "FHIR Version", ["R4", "R4B", "R5"], "R4", "The FHIR version of the messages: R4 (4.0.1), R4B (4.3.0) or R5 (5.0.0). Used for validation and for converting between JSON and XML. Profile packages must be for the same version."),
         bool("stripNamespaces", "Strip Namespaces", true, "If checked, the FHIR namespace (http://hl7.org/fhir) is removed from the XML the transformer works on, so you can write msg.name.family.@value. It is put back when the message leaves the transformer. The XHTML namespace of narratives (text.div) is kept."),
         opt("outputFormat", "Output Format", ["JSON", "XML"], "JSON", "The format of the outbound message (the encoded data): FHIR JSON or FHIR XML. Messages come in as either; the transformer always works on FHIR XML. After a transformer the FHIR engine writes the message in the element order of the specification."),
         bool("prettyPrint", "Pretty Print", true, "If checked, outbound JSON and XML created by the FHIR engine are indented."),

@@ -201,7 +201,10 @@ public class FhirSerializer implements IMessageSerializer {
         }
         try {
             FhirXml.detect(message);
-            return new FhirValidation(engine("validate FHIR").validate(message, properties.engineOptions()), properties.getFailOn());
+            FhirEngine engine = engine("validate FHIR");
+            FhirValidation validation = new FhirValidation(engine.validate(message, properties.engineOptions()), properties.getFailOn());
+            FhirValidatorUsage.startPeriodicRelease(engine);
+            return validation;
         } catch (MessageSerializerException e) {
             throw e;
         } catch (Exception e) {
@@ -221,7 +224,9 @@ public class FhirSerializer implements IMessageSerializer {
         Map<String, String> options = properties.engineOptions();
         Thread thread = new Thread(() -> {
             try {
-                FhirEngineLoader.engine().warmUp(options);
+                FhirEngine engine = FhirEngineLoader.engine();
+                FhirValidatorUsage.startPeriodicRelease(engine);
+                engine.warmUp(options);
             } catch (Exception e) {
                 logger.warn("FHIR data type: " + e.getMessage());
             }

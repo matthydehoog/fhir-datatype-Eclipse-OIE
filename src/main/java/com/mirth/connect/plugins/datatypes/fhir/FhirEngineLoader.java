@@ -53,6 +53,11 @@ public final class FhirEngineLoader {
         return engine;
     }
 
+    /** The engine if it was loaded already, otherwise null; never loads it. */
+    public static synchronized FhirEngine loadedEngine() {
+        return engine;
+    }
+
     /** Whether this runs in the server (and not the Administrator), where the engine must be available. */
     public static boolean isServer() {
         try {

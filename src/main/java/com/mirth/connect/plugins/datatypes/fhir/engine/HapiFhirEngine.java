@@ -10,10 +10,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +60,8 @@ public final class HapiFhirEngine implements FhirEngine {
     /** Conformance resources taken from profile files and packages; examples and the like are skipped. */
     private static final Set<String> CONFORMANCE_TYPES = Set.of("StructureDefinition", "ValueSet", "CodeSystem", "ConceptMap", "NamingSystem");
 
-    private final Map<String, FhirValidator> validators = new ConcurrentHashMap<>();
+    private final Map<String, CachedValidator> validators = new ConcurrentHashMap<>();
+    private final Map<FhirVersionEnum, FhirContext> validationContexts = new HashMap<>();
 
     @Override
     public List<Map<String, String>> validate(String resource, Map<String, String> options) throws Exception {
@@ -120,16 +124,98 @@ public final class HapiFhirEngine implements FhirEngine {
         }
     }
 
-    // ------------------------------------------------------------------ validator
-
-    private FhirValidator validator(Map<String, String> options) {
-        Map<String, String> key = new TreeMap<>(options);
-        key.remove(REQUIRED_PROFILE); // passed per call, not part of the validator
-        return validators.computeIfAbsent(key.toString(), k -> build(options));
+    @Override
+    public synchronized void retainValidators(List<Map<String, String>> inUse, long idleMillis) {
+        Set<String> keep = new HashSet<>();
+        for (Map<String, String> options : inUse) {
+            keep.add(key(options));
+        }
+        long now = System.currentTimeMillis();
+        validators.entrySet().removeIf(e -> !keep.contains(e.getKey()) && now - e.getValue().lastUsed > idleMillis);
+        Set<FhirVersionEnum> needed = new HashSet<>();
+        for (CachedValidator cached : validators.values()) {
+            needed.add(cached.version);
+        }
+        for (FhirVersionEnum version : new HashSet<>(validationContexts.keySet())) {
+            if (!needed.contains(version)) {
+                validationContexts.remove(version);
+                releaseSpecification(version);
+            }
+        }
     }
 
-    private FhirValidator build(Map<String, String> options) {
-        FhirContext ctx = context(options.get(FHIR_VERSION));
+    /**
+     * HAPI keeps the specification of each version in a static map for the life of its class
+     * loader (R5 alone is about 500 MB), and has no API to drop it. The map is this plugin's own:
+     * HAPI is loaded in the plugin's class loader.
+     */
+    static boolean releaseSpecification(FhirVersionEnum version) {
+        try {
+            Map<?, ?> implementations = specifications();
+            synchronized (implementations) {
+                return implementations.remove(version) != null;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            // A HAPI FHIR without this field: the specification stays loaded, as before 1.5.0.
+            return false;
+        }
+    }
+
+    /** DefaultProfileValidationSupport.ourImplementations; package-private for tests. */
+    static Map<?, ?> specifications() throws ReflectiveOperationException {
+        Field field = DefaultProfileValidationSupport.class.getDeclaredField("ourImplementations");
+        field.setAccessible(true);
+        return (Map<?, ?>) field.get(null);
+    }
+
+    /** The cache keys of the validators, for tests. */
+    Set<String> validatorKeys() {
+        return new HashSet<>(validators.keySet());
+    }
+
+    /** The FHIR versions whose specification is loaded for validation, for tests. */
+    synchronized Set<FhirVersionEnum> loadedVersions() {
+        return new HashSet<>(validationContexts.keySet());
+    }
+
+    // ------------------------------------------------------------------ validator
+
+    private static final class CachedValidator {
+        final FhirValidator validator;
+        final FhirVersionEnum version;
+        volatile long lastUsed = System.currentTimeMillis();
+
+        CachedValidator(FhirValidator validator, FhirVersionEnum version) {
+            this.validator = validator;
+            this.version = version;
+        }
+    }
+
+    static String key(Map<String, String> options) {
+        Map<String, String> key = new TreeMap<>(options);
+        key.remove(REQUIRED_PROFILE); // passed per call, not part of the validator
+        key.put(FHIR_VERSION, version(options.get(FHIR_VERSION)).name());
+        return key.toString();
+    }
+
+    private FhirValidator validator(Map<String, String> options) {
+        CachedValidator cached = validators.computeIfAbsent(key(options), k -> build(options));
+        cached.lastUsed = System.currentTimeMillis();
+        return cached.validator;
+    }
+
+    /**
+     * The specification of a version is loaded into the context the validator uses, and stays there
+     * as long as the context lives. Validators therefore get a context of this engine instead of
+     * the static cached one, so it can be released with them.
+     */
+    private synchronized FhirContext validationContext(FhirVersionEnum version) {
+        return validationContexts.computeIfAbsent(version, FhirContext::forVersion);
+    }
+
+    private CachedValidator build(Map<String, String> options) {
+        FhirVersionEnum version = version(options.get(FHIR_VERSION));
+        FhirContext ctx = validationContext(version);
 
         List<IValidationSupport> supports = new ArrayList<>();
         PrePopulatedValidationSupport profiles = loadProfiles(ctx, options.getOrDefault(PROFILES, ""));
@@ -156,7 +242,7 @@ public final class HapiFhirEngine implements FhirEngine {
 
         FhirValidator validator = ctx.newValidator();
         validator.registerValidatorModule(module);
-        return validator;
+        return new CachedValidator(validator, version);
     }
 
     /**
@@ -182,7 +268,11 @@ public final class HapiFhirEngine implements FhirEngine {
                 } else {
                     String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
                     IParser parser = name.endsWith(".xml") ? ctx.newXmlParser() : ctx.newJsonParser();
-                    add(support, parser.parseResource(text));
+                    IBaseResource resource = parser.parseResource(text);
+                    if ("StructureDefinition".equals(resource.fhirType())) {
+                        checkVersion(ctx, ctx.newTerser().getSinglePrimitiveValueOrNull(resource, "fhirVersion"), "StructureDefinition " + file.getName());
+                    }
+                    add(support, resource);
                 }
             } catch (Exception e) {
                 throw new IllegalArgumentException("Cannot load profile file " + file.getAbsolutePath() + ": " + e.getMessage(), e);
@@ -196,6 +286,7 @@ public final class HapiFhirEngine implements FhirEngine {
         try (InputStream in = new FileInputStream(file)) {
             npm = NpmPackage.fromPackage(in);
         }
+        checkVersion(ctx, npm.fhirVersionList(), "Package " + npm.vid());
         IParser parser = ctx.newJsonParser();
         for (String resourceFile : npm.listResources(CONFORMANCE_TYPES.toArray(new String[0]))) {
             try (InputStream in = npm.loadResource(resourceFile)) {
@@ -231,12 +322,49 @@ public final class HapiFhirEngine implements FhirEngine {
 
     // ------------------------------------------------------------------ helpers
 
-    /** Only R4 for now; a new version needs its structures and validation-resources libraries. */
+    /** For parsing and encoding only: the cached context stays small as long as nothing validates with it. */
     private static FhirContext context(String fhirVersion) {
-        if (fhirVersion == null || fhirVersion.isEmpty() || fhirVersion.equalsIgnoreCase("R4")) {
-            return FhirContext.forCached(FhirVersionEnum.R4);
+        return FhirContext.forCached(version(fhirVersion));
+    }
+
+    /** Each version needs its structures and validation-resources libraries in lib/. */
+    private static FhirVersionEnum version(String fhirVersion) {
+        String version = fhirVersion == null ? "" : fhirVersion.trim().toUpperCase();
+        switch (version) {
+            case "":
+            case "R4":
+                return FhirVersionEnum.R4;
+            case "R4B":
+                return FhirVersionEnum.R4B;
+            case "R5":
+                return FhirVersionEnum.R5;
+            default:
+                throw new IllegalArgumentException("FHIR version " + fhirVersion + " is not supported. Use R4, R4B or R5.");
         }
-        throw new IllegalArgumentException("FHIR version " + fhirVersion + " is not supported.");
+    }
+
+    /**
+     * Throws when profiles declare another FHIR version than the channel's: HAPI would otherwise load
+     * them and report confusing errors (or none) for every message. Compares major.minor, so 4.0.0
+     * and 4.0.1 are both R4.
+     */
+    private static void checkVersion(FhirContext ctx, String declared, String what) {
+        if (declared == null || declared.trim().isEmpty()) {
+            return;
+        }
+        FhirVersionEnum expected = ctx.getVersion().getVersion();
+        for (String version : declared.split(",")) {
+            if (majorMinor(version).equals(majorMinor(expected.getFhirVersionString()))) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException(what + " is for FHIR " + declared.trim() + ", but FHIR Version is " + expected.name() + " ("
+                + expected.getFhirVersionString() + "). Use profiles for " + expected.name() + ", or set FHIR Version to the version of the profiles.");
+    }
+
+    private static String majorMinor(String version) {
+        String[] parts = version.trim().split("\\.");
+        return parts.length < 2 ? version.trim() : parts[0] + "." + parts[1];
     }
 
     private static IParser strict(IParser parser) {

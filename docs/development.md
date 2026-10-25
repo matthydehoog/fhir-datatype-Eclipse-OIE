@@ -73,7 +73,7 @@ install client-core   server-lib/mirth-client-core.jar
 mvn clean package
 ```
 
-The result is `target/datatype-fhir-<version>.zip`, about 80 MB. Always use `clean`: `target/lib` keeps jars from an earlier build, and a dependency you excluded would otherwise still end up in the zip.
+The result is `target/datatype-fhir-<version>.zip`, about 117 MB. Always use `clean`: `target/lib` keeps jars from an earlier build, and a dependency you excluded would otherwise still end up in the zip.
 
 `mvn package` runs the tests first. Add `-DskipTests` to skip them, or `-o` to build offline once everything is downloaded.
 
@@ -200,16 +200,28 @@ System properties for development:
 `HapiFhirEngine.build` creates a `FhirValidator` with this support chain, in this order:
 
 1. `PrePopulatedValidationSupport` with the profiles from *Profile Packages*: `.tgz` NPM packages and single conformance resources (StructureDefinition, ValueSet, CodeSystem, ConceptMap, NamingSystem) in JSON or XML. Other resources in a package are skipped.
-2. `DefaultProfileValidationSupport`: the FHIR R4 specification.
+2. `DefaultProfileValidationSupport`: the specification of the chosen FHIR version (R4, R4B or R5).
 3. `CommonCodeSystemsTerminologyService`, `InMemoryTerminologyServerValidationSupport`, `SnapshotGeneratingValidationSupport`.
 4. `RemoteTerminologyServiceValidationSupport`, only when a terminology server is set.
 5. `UnknownCodeSystemWarningValidationSupport` with the *Unknown Code Systems* severity.
 
 The instance validator refuses unknown profiles, accepts unknown extensions when the property says so, and ignores best-practice warnings (such as dom-6, "should have narrative"), which would flag nearly every message.
 
-Building a validator takes seconds and about 300 MB of heap, so validators are cached per combination of options. The required profile is passed per call and is not part of the cache key. `FhirSerializer` starts building in a background thread (`warmUp`) when a channel with validation is deployed, so the first message does not wait as long.
+Building a validator takes seconds, so validators are cached per combination of options. The required profile is passed per call and is not part of the cache key. `FhirSerializer` starts building in a background thread (`warmUp`) when a channel with validation is deployed, so the first message does not wait as long.
+
+**Memory.** The heap goes to the specification, not to the validators: HAPI's `DefaultProfileValidationSupport` keeps it in a static map per FHIR version (`ourImplementations`), shared by all validators of that version. Measured with HAPI 8.12.1: R4 190 MB, R4B 160 MB, R5 490 MB; a second validator of the same version adds almost nothing. That map lives as long as its class loader and has no API to remove an entry, so the plugin drops the cached validators and the specification of a version itself:
+
+- `server.FhirChannelPlugin`, a `ChannelPlugin` registered in `plugin.xml`, gives `FhirValidatorUsage` the options of every FHIR data type with validation in the deployed channels (`FhirChannelOptions`, read from `ChannelController.getDeployedChannelById`). After every deploy and undeploy (the global hooks, which run once all channels of the action are done) it calls `FhirEngine.retainValidators` with those options and no idle time: everything else goes at once, including validators used only from scripts, which are built again when needed.
+- Once the engine has validated, a daemon thread checks every minute with an idle time of 15 minutes (`IDLE_MILLIS`), so validators used only by `FhirTools` are released also when nothing is deployed or undeployed. It does not depend on garbage collection: an idle server hardly collects, which is why tracking serializers in a weak map did not work.
+- When no validator of a version is left, `HapiFhirEngine` drops its own context for that version and removes the version from `ourImplementations` by reflection. The map belongs to this plugin alone, because HAPI is loaded in the plugin's class loader. `HapiFhirEngineRetainTest` fails when a HAPI update renames the field; without it the specification would simply stay loaded, as before 1.5.0.
+
+Validators use a context of their own (`FhirContext.forVersion`), not the static `forCached` one, which only parses and encodes.
+
+Released heap is only reused or returned to the operating system after a garbage collection, and an idle JVM hardly collects. Measured with Java 17 (G1, `-Xmx1g`), R4 and R5 released: without options the heap stayed at 860 MB used for two minutes; with `-XX:G1PeriodicGCInterval=10000` it was 230 MB used after one minute and the committed heap went from 1024 to 734 MB after two. The README advises `-XX:G1PeriodicGCInterval=60000`.
 
 Profile files are read once, when the validator is built: after changing them, restart the channel or the server.
+
+`loadProfiles` checks that profiles match the *FHIR Version* (`checkVersion`, on major.minor): the `fhirVersions` in a package's `package.json` and the `fhirVersion` of a single StructureDefinition. A mismatch fails the build of the validator, so every message gets the error, instead of HAPI silently validating against profiles of another version.
 
 ## Properties and saved channels
 
@@ -250,9 +262,10 @@ The web administrator's properties panel is `webadmin/web/plugin.js`. It is a st
 
 ## Dependencies
 
-HAPI FHIR pulls in far more than validating R4 needs. `pom.xml` excludes what was found unnecessary, which keeps the zip at about 80 MB. The comments in `pom.xml` list what was tried:
+HAPI FHIR pulls in far more than validating needs. `pom.xml` excludes what was found unnecessary. The comments in `pom.xml` list what was tried:
 
-- **Excluded:** dstu2, dstu2016may, r4b, PlantUML, JGit, SQLite, Saxon, OGNL, xmlsec, commonmark, Apache httpclient (from `hapi-fhir-validation`), OkHttp/Okio/Kotlin.
+- **Per FHIR version:** `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` for R4, R4B and R5. `hapi-fhir-structures-r5` gets the same exclusions as `hapi-fhir-validation`, otherwise it brings PlantUML and JGit back.
+- **Excluded:** dstu2, dstu2016may, PlantUML, JGit, SQLite, Saxon, OGNL, xmlsec, commonmark, Apache httpclient (from `hapi-fhir-validation`), OkHttp/Okio/Kotlin.
 - **Tried and needed:** dstu3 and the convertors (profiles are converted internally), Thymeleaf, ICU4J, nimbus-jose-jwt (Bundle validation), `hapi-fhir-client` with its HTTP client (terminology server).
 
 When you change an exclusion, run all tests **and** validate a Bundle, a resource against a Nictiz package and a code against a terminology server in a real OIE: a missing class often only shows on one path.
@@ -273,13 +286,15 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 54 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 70 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |
 | `FhirSerializerTest` | Inbound and outbound conversion, validation, reject and accept, element order, DOCTYPE refusal. |
 | `FhirXmlTest` | Format detection, JSON to XML, namespaces, `hasDoctype`. |
 | `FhirToolsTest` | The script functions. |
+| `FhirVersionTest` | R4B and R5: version-only elements and resources, conversion, `FhirTools` with a version, profile files and packages of another version. |
+| `FhirValidatorUsageTest`, `server/FhirChannelOptionsTest`, `engine/HapiFhirEngineRetainTest` | Releasing validators and specifications that are no longer used. |
 | `FhirBundleSplitterTest`, `server/FhirBatchAdaptorTest` | Batch splitting and source map variables, using `examples/observation-bundle.json`. |
 | `server/FhirAutoResponderTest` | OperationOutcome responses and HTTP status. |
 | `client/FhirDataTypeCodeTemplatePluginTest` | Templates, their contexts, the snippets in Rhino, and the example library. |
@@ -298,15 +313,15 @@ The server log shows HAPI's warnings and errors. *The FHIR engine is not availab
 
 ## Common changes
 
-### Supporting another FHIR version (R4B, R5)
+### Supporting another FHIR version (R6)
 
-The design keeps this a local change:
+R4B and R5 were added this way (1.5.0); a next version, once HAPI FHIR supports it, follows the same steps:
 
-1. Add the version to `FhirSerializationProperties.FhirVersion` (saved channels keep R4).
-2. Add `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` to `pom.xml`, and remove the matching exclusion (r4b is excluded today).
+1. Add the version to `FhirSerializationProperties.FhirVersion` (saved channels keep R4) and to the error texts that list the versions (`FhirTools`, `HapiFhirEngine.context()`).
+2. Add `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` to `pom.xml`, with the exclusions `hapi-fhir-validation` has, and check the dependency tree for new libraries.
 3. Map the version in `HapiFhirEngine.context()`.
-4. `FhirTools.toJson` and `toXml` use `"R4"`; give them a version parameter or overload.
-5. `FhirOperationOutcome` writes R4; check that the structure is the same in the new version.
+4. Add a test with an element or resource that only exists in the new version (see `FhirVersionTest`).
+5. `FhirOperationOutcome` writes one structure for all versions; check that it is the same in the new version.
 6. Add the option to `webadmin/web/plugin.js` and the README.
 
 ### Changing what goes into a message

@@ -34,7 +34,8 @@ OIE's default heap is only 256 MB (`-Xmx256m` in `conf/base_includes.vmoptions`,
 | Property | Default | What it does |
 | --- | --- | --- |
 | FHIR Version | R4 | The FHIR version of the messages: R4, R4B or R5. Used for validation and for converting between JSON and XML; profile packages must be for the same version. |
-| Strip Namespaces | on | Removes the FHIR namespace from the transformer XML (the XHTML namespace of `text.div` stays) and puts it back afterwards. |
+| Transformer Format | XML | What the transformer works on: FHIR XML with E4X, or a JavaScript object of the FHIR JSON (see [JSON in the transformer](#json-in-the-transformer)). |
+| Strip Namespaces | on | With Transformer Format XML: removes the FHIR namespace from the transformer XML (the XHTML namespace of `text.div` stays) and puts it back afterwards. |
 | Output Format | JSON | FHIR JSON or FHIR XML for the outbound message. Both are written by the FHIR engine in the element order of the specification. |
 | Pretty Print | on | Indents JSON and XML created by the FHIR engine. |
 | Validate Inbound | on | Validates every inbound message. |
@@ -142,6 +143,22 @@ msg.appendChild(<birthDate value="1980-01-01"/>);
 ```
 
 You don't have to mind the FHIR element order: after the transformer the FHIR engine writes the message again, JSON or XML, in the order of the specification. So `birthDate` ends up after `gender`, wherever you appended it. An element that is not in the specification is refused with an error instead of being dropped.
+
+### JSON in the transformer
+
+Set *Transformer Format* to **JSON** on the inbound properties, and `msg` is a JavaScript object of the FHIR JSON, as in most FHIR tooling:
+
+```javascript
+var family = msg.name[0].family;
+msg.gender = 'female';
+msg.identifier = (msg.identifier || []).concat([{ system: 'http://example.org/mrn', value: '12345' }]);
+```
+
+- Messages can still come in as JSON or XML; XML is converted to JSON for the transformer. JSON is passed on exactly as it came in.
+- The outbound message is made from `msg` and written by the FHIR engine in the order of the specification, JSON or XML as set in *Output Format*. A misspelled element (`msg.gendr`) is refused with an error.
+- **Decimals lose trailing zeros**: JavaScript turns `1.50` into the number `1.5`, so the outbound message says `1.5`. In FHIR the number of decimals can carry meaning (precision). Keep *Transformer Format* on XML for messages where that matters.
+- On the outbound properties, *Transformer Format* sets the format of the outbound template (`tmp`).
+- In the Administrator, use a FHIR JSON message as the inbound template: converting an XML template to JSON needs the FHIR engine, which runs on the server only.
 
 ### In scripts
 

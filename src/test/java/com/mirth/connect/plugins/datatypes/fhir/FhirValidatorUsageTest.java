@@ -53,6 +53,7 @@ public class FhirValidatorUsageTest {
         @Override public String toJson(String xml, String fhirVersion, boolean pretty) { throw new UnsupportedOperationException(); }
         @Override public String toXml(String json, String fhirVersion, boolean pretty) { throw new UnsupportedOperationException(); }
         @Override public String reorderXml(String xml, String fhirVersion, boolean pretty) { throw new UnsupportedOperationException(); }
+        @Override public String reorderJson(String json, String fhirVersion, boolean pretty) { throw new UnsupportedOperationException(); }
         @Override public void warmUp(Map<String, String> options) {}
         // @formatter:on
     }

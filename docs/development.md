@@ -143,10 +143,15 @@ inbound message (FHIR JSON or XML)
    ├─ populateMetaData()              resource type, version, inbound validation
    │                                  → connector map fhirValid, fhirIssueCount, fhirIssues, fhirOperationOutcome
    │
-   ├─ with filter/transformer steps:
+   ├─ with filter/transformer steps, Transformer Format XML:
    │     toXML()                      refuse DOCTYPE, reject if invalid, JSON→XML (FhirXml), strip namespace
    │        ↓ transformer (E4X on msg)
    │     fromXML()                    refuse DOCTYPE, add namespace, encode(fromTransformer = true)
+   │
+   ├─ with filter/transformer steps, Transformer Format JSON:
+   │     toJSON()                     refuse DOCTYPE, reject if invalid, JSON unchanged / XML→JSON (HAPI)
+   │        ↓ transformer (msg = JSON.parse(...), JSON.stringify(msg) afterwards)
+   │     fromXML() → fromJSON()       encode(fromTransformer = true)
    │
    └─ without steps:
          transformWithoutSerializing()  refuse DOCTYPE, reject if invalid, encode(fromTransformer = false)
@@ -155,8 +160,11 @@ encode():  outbound validation (optional, always rejects)
            XML  → JSON  HAPI toJson
            JSON → XML   HAPI toXml
            XML  → XML   HAPI reorderXml, only after a transformer and only on the server
+           JSON → JSON  HAPI reorderJson, only after a transformer and only on the server
            otherwise    unchanged
 ```
+
+**Transformer Format JSON.** OIE normally fixes a data type's transformer format (`DataTypeDelegate.getDefaultSerializationType`), but `DataTypeFactory` first asks `SerializationProperties.getSerializationType()` of the inbound properties, which `FhirSerializationProperties` overrides. The engine then calls `toJSON`, and its `JavaScriptBuilder` wraps the steps in `msg = JSON.parse(...)` and `JSON.stringify(msg)`. For the outbound side the engine asks `DeserializationProperties`, which this data type does not have, so it stays XML and calls `fromXML` with the JSON: `fromXML` detects that and hands it to `fromJSON`. On outbound properties `getSerializationType()` only decides the template (`tmp`), as `DataTypeFactory` uses the serialization properties for the template type.
 
 Points worth knowing:
 
@@ -286,13 +294,14 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 70 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 78 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |
 | `FhirSerializerTest` | Inbound and outbound conversion, validation, reject and accept, element order, DOCTYPE refusal. |
 | `FhirXmlTest` | Format detection, JSON to XML, namespaces, `hasDoctype`. |
 | `FhirToolsTest` | The script functions. |
+| `FhirTransformerJsonTest` | Transformer Format JSON: the transformer script run in Rhino as the engine builds it, XML and JSON in and out, misspelled elements. |
 | `FhirVersionTest` | R4B and R5: version-only elements and resources, conversion, `FhirTools` with a version, profile files and packages of another version. |
 | `FhirValidatorUsageTest`, `server/FhirChannelOptionsTest`, `engine/HapiFhirEngineRetainTest` | Releasing validators and specifications that are no longer used. |
 | `FhirBundleSplitterTest`, `server/FhirBatchAdaptorTest` | Batch splitting and source map variables, using `examples/observation-bundle.json`. |

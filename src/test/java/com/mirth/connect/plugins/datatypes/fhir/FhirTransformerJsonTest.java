@@ -114,8 +114,21 @@ public class FhirTransformerJsonTest {
             transform(serializer(json()), serializer(new FhirSerializationProperties()), PATIENT_JSON, "msg.gendr = 'female';");
             fail("expected the unknown element to be refused");
         } catch (MessageSerializerException e) {
-            String text = e.getMessage() + " " + (e.getCause() == null ? "" : e.getCause().getMessage());
-            assertTrue(text, text.contains("gendr"));
+            assertTrue(e.getMessage(), e.getMessage().startsWith("The transformer output is not valid FHIR: "));
+            assertTrue(e.getMessage(), e.getMessage().contains("gendr"));
+        }
+    }
+
+    /** The step kept msg.toString(), which gives "[object Object]" for a JavaScript object. */
+    @Test
+    public void fhirToolsExplainsAJavaScriptObject() throws Exception {
+        for (String call : new String[] { "validate", "toJson", "toXml" }) {
+            try {
+                FhirTools.class.getMethod(call, String.class).invoke(null, "[object Object]");
+                fail(call);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                assertTrue(call + ": " + e.getCause().getMessage(), e.getCause().getMessage().contains("pass JSON.stringify(msg) instead of msg or msg.toString()"));
+            }
         }
     }
 

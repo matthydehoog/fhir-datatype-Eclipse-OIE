@@ -294,7 +294,7 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 78 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 79 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |

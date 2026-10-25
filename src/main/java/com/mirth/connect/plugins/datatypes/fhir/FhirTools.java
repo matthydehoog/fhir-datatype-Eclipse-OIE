@@ -82,6 +82,7 @@ public final class FhirTools {
 
     /** As {@link #toXml(String)}, for FHIR version R4, R4B or R5. */
     public static String toXml(String json, String fhirVersion) throws Exception {
+        FhirXml.detect(json); // refuses a JavaScript object passed as msg
         return FhirEngineLoader.engine().toXml(json, version(fhirVersion).name(), true);
     }
 

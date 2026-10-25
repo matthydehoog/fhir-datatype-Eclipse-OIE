@@ -38,6 +38,8 @@ public class FhirSerializer implements IMessageSerializer {
     /** The issues as a FHIR OperationOutcome resource (JSON), ready to return to the sender. */
     public static final String OPERATION_OUTCOME_VARIABLE = "fhirOperationOutcome";
 
+    static final String TRANSFORMER_OUTPUT_INVALID = "The transformer output is not valid FHIR";
+
     private static final Logger logger = LogManager.getLogger(FhirSerializer.class);
 
     /** The last message validated on this thread, so each message is validated once. */
@@ -162,7 +164,8 @@ public class FhirSerializer implements IMessageSerializer {
         } catch (MessageSerializerException e) {
             throw e;
         } catch (Exception e) {
-            throw error("Error converting FHIR to " + properties.getOutputFormat(), e);
+            // After a transformer the cause is nearly always the script, for example a misspelled element.
+            throw error(fromTransformer ? TRANSFORMER_OUTPUT_INVALID : "Error converting FHIR to " + properties.getOutputFormat(), e);
         }
         return output;
     }

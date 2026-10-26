@@ -208,7 +208,7 @@ System properties for development:
 `HapiFhirEngine.build` creates a `FhirValidator` with this support chain, in this order:
 
 1. `PrePopulatedValidationSupport` with the profiles from *Profile Packages*: `.tgz` NPM packages and single conformance resources (StructureDefinition, ValueSet, CodeSystem, ConceptMap, NamingSystem) in JSON or XML. Other resources in a package are skipped.
-2. `DefaultProfileValidationSupport`: the specification of the chosen FHIR version (R4, R4B or R5).
+2. `LazySpecificationSupport`: the specification of the chosen FHIR version (R4, R4B or R5), with the terminology read on demand (see *Memory* below). Before 1.5.1 this was HAPI's `DefaultProfileValidationSupport`.
 3. `CommonCodeSystemsTerminologyService`, `InMemoryTerminologyServerValidationSupport`, `SnapshotGeneratingValidationSupport`.
 4. `RemoteTerminologyServiceValidationSupport`, only when a terminology server is set.
 5. `UnknownCodeSystemWarningValidationSupport` with the *Unknown Code Systems* severity.
@@ -288,7 +288,9 @@ Versions that must match the engine:
 | `commons-lang3` (provided) | The engine's version, 3.20.0. HAPI's terminology client needs 3.18 or later. |
 | Engine jars (`oie.version`) | The engine version you compile against. |
 
-**Updating HAPI FHIR:** change `hapi.version`, run `mvn clean package`, and check the security advisories for HAPI FHIR and `org.hl7.fhir.core` (see the README's XXE section, which names the versions).
+**R4B needs the R4 resources.** `LazySpecificationSupport`, like HAPI, takes the v2 and v3 code tables for R4B from `hapi-fhir-validation-resources-r4`. Keep that library, also if R4 itself were ever dropped.
+
+**Updating HAPI FHIR:** change `hapi.version`, run `mvn clean package`, and check the security advisories for HAPI FHIR and `org.hl7.fhir.core` (see the README's XXE section, which names the versions). `LazySpecificationSupport` copies the file lists of HAPI's `DefaultProfileValidationSupportBundleStrategy` (R4, R4B) and `DefaultProfileValidationSupportNpmStrategy` (R5): compare them with the new HAPI version (the package names contain versions, such as `hl7.terminology-5.1.0.tgz`). `LazySpecificationTest` fails when the results drift apart, and `LazySpecificationSupport.load` refuses to start when a file is missing altogether.
 
 ## Testing
 
@@ -332,9 +334,10 @@ R4B and R5 were added this way (1.5.0); a next version, once HAPI FHIR supports 
 1. Add the version to `FhirSerializationProperties.FhirVersion` (saved channels keep R4) and to the error texts that list the versions (`FhirTools`, `HapiFhirEngine.context()`).
 2. Add `hapi-fhir-structures-<version>` and `hapi-fhir-validation-resources-<version>` to `pom.xml`, with the exclusions `hapi-fhir-validation` has, and check the dependency tree for new libraries.
 3. Map the version in `HapiFhirEngine.context()`.
-4. Add a test with an element or resource that only exists in the new version (see `FhirVersionTest`).
-5. `FhirOperationOutcome` writes one structure for all versions; check that it is the same in the new version.
-6. Add the option to `webadmin/web/plugin.js` and the README.
+4. Tell `LazySpecificationSupport.load` where HAPI keeps the specification of that version (the file list of HAPI's strategy for it), and add the version to `LazySpecificationTest`.
+5. Add a test with an element or resource that only exists in the new version (see `FhirVersionTest`).
+6. `FhirOperationOutcome` writes one structure for all versions; check that it is the same in the new version.
+7. Add the option to `webadmin/web/plugin.js` and the README.
 
 ### Changing what goes into a message
 

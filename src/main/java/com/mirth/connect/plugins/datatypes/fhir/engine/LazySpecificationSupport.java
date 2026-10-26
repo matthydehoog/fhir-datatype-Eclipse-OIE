@@ -72,10 +72,13 @@ final class LazySpecificationSupport implements IValidationSupport {
                 for (String name : R5_PACKAGES) {
                     support.loadPackage("org/hl7/fhir/r5/packages/" + name);
                 }
-            } else {
+            } else if (version == FhirVersionEnum.R4 || version == FhirVersionEnum.R4B) {
                 for (String name : version == FhirVersionEnum.R4B ? R4B_BUNDLES : R4_BUNDLES) {
                     support.loadBundle("org/hl7/fhir/" + name);
                 }
+            } else {
+                // A new version needs the file list of HAPI's own strategy for it (see docs/development.md).
+                throw new IllegalArgumentException("No FHIR specification files known for " + version + ".");
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot load the FHIR " + version + " specification: " + e.getMessage(), e);

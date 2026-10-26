@@ -52,8 +52,9 @@ import ca.uhn.fhir.validation.ValidationOptions;
 import ca.uhn.fhir.validation.ValidationResult;
 
 /**
- * HAPI FHIR behind {@link FhirEngine}. A validator is expensive to build (it loads the whole
- * specification and the profiles), so one is kept per set of options; FhirValidator is thread safe.
+ * HAPI FHIR behind {@link FhirEngine}. A validator is expensive to build (the specification's
+ * StructureDefinitions and the profiles), so one is kept per set of options; FhirValidator is thread
+ * safe. The specification itself is shared per version ({@link LazySpecificationSupport}).
  */
 public final class HapiFhirEngine implements FhirEngine {
 
@@ -157,9 +158,11 @@ public final class HapiFhirEngine implements FhirEngine {
     }
 
     /**
-     * HAPI keeps the specification of each version in a static map for the life of its class
-     * loader (R5 alone is about 500 MB), and has no API to drop it. The map is this plugin's own:
-     * HAPI is loaded in the plugin's class loader.
+     * HAPI's DefaultProfileValidationSupport keeps the specification of each version in a static
+     * map for the life of its class loader (R5: about 520 MB), with no API to drop it. Since 1.5.1
+     * the engine uses LazySpecificationSupport and never fills it; this is a safety net, in case
+     * something in HAPI builds one after all. The map is this plugin's own: HAPI is loaded in the
+     * plugin's class loader.
      */
     static boolean releaseSpecification(FhirVersionEnum version) {
         try {

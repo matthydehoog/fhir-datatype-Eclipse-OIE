@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
- * Lets the engine drop the validators, and the FHIR specifications (R5 alone is about 500 MB), that
+ * Lets the engine drop the validators, and the FHIR specifications (R5 alone is about 300 MB), that
  * no deployed channel uses any more.
  *
  * The options in use come from the deployed channels (server.FhirChannelPlugin, which also calls

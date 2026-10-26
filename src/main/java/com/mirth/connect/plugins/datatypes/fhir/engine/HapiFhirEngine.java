@@ -62,6 +62,7 @@ public final class HapiFhirEngine implements FhirEngine {
 
     private final Map<String, CachedValidator> validators = new ConcurrentHashMap<>();
     private final Map<FhirVersionEnum, FhirContext> validationContexts = new HashMap<>();
+    private final Map<FhirVersionEnum, LazySpecificationSupport> specifications = new HashMap<>();
 
     @Override
     public List<Map<String, String>> validate(String resource, Map<String, String> options) throws Exception {
@@ -148,6 +149,8 @@ public final class HapiFhirEngine implements FhirEngine {
         for (FhirVersionEnum version : new HashSet<>(validationContexts.keySet())) {
             if (!needed.contains(version)) {
                 validationContexts.remove(version);
+                specifications.remove(version);
+                // Not filled by the engine any more (LazySpecificationSupport), but cleared in case anything did.
                 releaseSpecification(version);
             }
         }
@@ -160,7 +163,7 @@ public final class HapiFhirEngine implements FhirEngine {
      */
     static boolean releaseSpecification(FhirVersionEnum version) {
         try {
-            Map<?, ?> implementations = specifications();
+            Map<?, ?> implementations = hapiStaticSpecifications();
             synchronized (implementations) {
                 return implementations.remove(version) != null;
             }
@@ -171,7 +174,7 @@ public final class HapiFhirEngine implements FhirEngine {
     }
 
     /** DefaultProfileValidationSupport.ourImplementations; package-private for tests. */
-    static Map<?, ?> specifications() throws ReflectiveOperationException {
+    static Map<?, ?> hapiStaticSpecifications() throws ReflectiveOperationException {
         Field field = DefaultProfileValidationSupport.class.getDeclaredField("ourImplementations");
         field.setAccessible(true);
         return (Map<?, ?>) field.get(null);
@@ -222,6 +225,24 @@ public final class HapiFhirEngine implements FhirEngine {
         return validationContexts.computeIfAbsent(version, FhirContext::forVersion);
     }
 
+    /**
+     * One specification per version, shared by its validators like HAPI's static copy was. It is
+     * also the context's own support, so HAPI never builds a DefaultProfileValidationSupport (and
+     * its full, static copy of the specification) behind our back.
+     */
+    private synchronized LazySpecificationSupport specification(FhirVersionEnum version, FhirContext ctx) {
+        return specifications.computeIfAbsent(version, v -> {
+            LazySpecificationSupport spec = LazySpecificationSupport.load(ctx);
+            ctx.setValidationSupport(spec);
+            return spec;
+        });
+    }
+
+    /** The loaded specification of a version, or null; for tests. */
+    synchronized LazySpecificationSupport loadedSpecification(FhirVersionEnum version) {
+        return specifications.get(version);
+    }
+
     private CachedValidator build(Map<String, String> options) {
         FhirVersionEnum version = version(options.get(FHIR_VERSION));
         FhirContext ctx = validationContext(version);
@@ -231,7 +252,7 @@ public final class HapiFhirEngine implements FhirEngine {
         if (profiles != null) {
             supports.add(profiles);
         }
-        supports.add(new DefaultProfileValidationSupport(ctx));
+        supports.add(specification(version, ctx));
         supports.add(new CommonCodeSystemsTerminologyService(ctx));
         supports.add(new InMemoryTerminologyServerValidationSupport(ctx));
         supports.add(new SnapshotGeneratingValidationSupport(ctx));

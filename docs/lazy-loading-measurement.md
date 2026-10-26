@@ -45,3 +45,20 @@ A validation support that keeps the StructureDefinitions loaded as now, and keep
 Lazy loading of terminology is worth it for R5: about half the memory, with the same validation results. For R4 the gain is small. Restricting the resource types is not needed.
 
 To make it a feature: replace `DefaultProfileValidationSupport` in `HapiFhirEngine.build` by a lazy support for the specification (R5 from the three packages in the `hapi-fhir-validation` jar; R4 from the bundles of `hapi-fhir-validation-resources-r4`), so the static copy in `DefaultProfileValidationSupport.ourImplementations` is no longer filled. Before releasing: test with Nictiz packages, a terminology server, Bundles with many resource types, and `Unknown Code Systems` set to Error, and compare the results with 1.5.0 on the build.fhir.org examples.
+
+## Implemented in 1.5.1
+
+`LazySpecificationSupport` (issue #26) replaces `DefaultProfileValidationSupport` in `HapiFhirEngine`. It keeps all StructureDefinitions loaded, and ValueSets and CodeSystems gzipped until they are needed. It reads the same files in the same order as HAPI; for R4B that includes the v2 and v3 tables of R4, which the first prototype missed.
+
+`LazySpecificationTest` compares the issues of 40 messages with HAPI's own support for R4, R4B and R5, and all are identical. The 40 messages are 10 crafted ones, the 3 plugin examples and the 27 build.fhir.org Patient examples, many of them invalid. Two lessons from that test:
+
+- **Overriding `isValueSetSupported` / `isCodeSystemSupported` changes the result**, because the chain then routes code validation to this support. HAPI's support does not override them, so this one does not either.
+- **A later resource with the same URL replaces an earlier one**, as in HAPI.
+
+Measured on the packaged zip, through the plugin's isolated `lib/` class loader, against the released 1.5.0 zip:
+
+| | 1.5.0 | 1.5.1 |
+| --- | --- | --- |
+| R5 | 523 MB, first validations 8.8 s | 300 MB, 5.7 s |
+| R4 + R5 | 675 MB | 428 MB |
+| After releasing both | 38 MB | 36 MB |

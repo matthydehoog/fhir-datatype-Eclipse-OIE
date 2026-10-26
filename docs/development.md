@@ -217,11 +217,13 @@ The instance validator refuses unknown profiles, accepts unknown extensions when
 
 Building a validator takes seconds, so validators are cached per combination of options. The required profile is passed per call and is not part of the cache key. `FhirSerializer` starts building in a background thread (`warmUp`) when a channel with validation is deployed, so the first message does not wait as long.
 
-**Memory.** The heap goes to the specification, not to the validators: HAPI's `DefaultProfileValidationSupport` keeps it in a static map per FHIR version (`ourImplementations`), shared by all validators of that version. Measured with HAPI 8.12.1: R4 190 MB, R4B 160 MB, R5 490 MB; a second validator of the same version adds almost nothing. That map lives as long as its class loader and has no API to remove an entry, so the plugin drops the cached validators and the specification of a version itself:
+**The specification (`LazySpecificationSupport`).** The heap goes to the specification, not to the validators. HAPI's `DefaultProfileValidationSupport` parses all of it up front and keeps it in a static map per FHIR version (`ourImplementations`): R4 190 MB, R5 520 MB with HAPI 8.12.1. The validator asks for all StructureDefinitions at once, but for ValueSets and CodeSystems one URL at a time. Since 1.5.1, `LazySpecificationSupport` takes the place of HAPI's support: it parses the StructureDefinitions, keeps ValueSets and CodeSystems as gzipped JSON (a few MB), and parses one the first time the validator asks for it. It reads the same files in the same order as HAPI (`DefaultProfileValidationSupportBundleStrategy` for R4 and R4B, which also uses the v2 and v3 tables of R4; the three packages of `DefaultProfileValidationSupportNpmStrategy` for R5), a later resource with the same URL replacing an earlier one. It does not override `isValueSetSupported` / `isCodeSystemSupported`, just like HAPI's support; doing so changes how the chain routes code validation. Result: R5 300 MB, R4 130 MB. `LazySpecificationTest` checks that R4, R4B and R5 give exactly the same issues as HAPI's own support for 40 messages; the measurement is in [lazy-loading-measurement.md](lazy-loading-measurement.md).
+
+There is one `LazySpecificationSupport` per version, shared by all validators of that version, and it is also the context's own support (`FhirContext.setValidationSupport`), so HAPI never builds its static copy behind our back. The plugin drops the cached validators and the specification of a version that is no longer used:
 
 - `server.FhirChannelPlugin`, a `ChannelPlugin` registered in `plugin.xml`, gives `FhirValidatorUsage` the options of every FHIR data type with validation in the deployed channels (`FhirChannelOptions`, read from `ChannelController.getDeployedChannelById`). After every deploy and undeploy (the global hooks, which run once all channels of the action are done) it calls `FhirEngine.retainValidators` with those options and no idle time: everything else goes at once, including validators used only from scripts, which are built again when needed.
 - Once the engine has validated, a daemon thread checks every minute with an idle time of 15 minutes (`IDLE_MILLIS`), so validators used only by `FhirTools` are released also when nothing is deployed or undeployed. It does not depend on garbage collection: an idle server hardly collects, which is why tracking serializers in a weak map did not work.
-- When no validator of a version is left, `HapiFhirEngine` drops its own context for that version and removes the version from `ourImplementations` by reflection. The map belongs to this plugin alone, because HAPI is loaded in the plugin's class loader. `HapiFhirEngineRetainTest` fails when a HAPI update renames the field; without it the specification would simply stay loaded, as before 1.5.0.
+- When no validator of a version is left, `HapiFhirEngine` drops its context and specification for that version. It also removes the version from `ourImplementations` by reflection, in case anything filled it after all; the map belongs to this plugin alone, because HAPI is loaded in the plugin's class loader.
 
 Validators use a context of their own (`FhirContext.forVersion`), not the static `forCached` one, which only parses and encodes.
 
@@ -294,7 +296,7 @@ Versions that must match the engine:
 mvn test
 ```
 
-There are 79 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
+There are 83 tests (JUnit 4). They run without OIE: the engine jars are on the test classpath, and the tests that need HAPI set `fhir.engine.direct=true`, so HAPI is loaded from the Maven classpath instead of `lib/`.
 
 | Test | Covers |
 | --- | --- |
@@ -304,6 +306,7 @@ There are 79 tests (JUnit 4). They run without OIE: the engine jars are on the t
 | `FhirTransformerJsonTest` | Transformer Format JSON: the transformer script run in Rhino as the engine builds it, XML and JSON in and out, misspelled elements. |
 | `FhirVersionTest` | R4B and R5: version-only elements and resources, conversion, `FhirTools` with a version, profile files and packages of another version. |
 | `FhirValidatorUsageTest`, `server/FhirChannelOptionsTest`, `engine/HapiFhirEngineRetainTest` | Releasing validators and specifications that are no longer used. |
+| `engine/LazySpecificationTest` | The lazy specification gives the same issues as HAPI's own for R4, R4B and R5 (40 messages, including the build.fhir.org examples), and HAPI's static copy stays empty. |
 | `FhirBundleSplitterTest`, `server/FhirBatchAdaptorTest` | Batch splitting and source map variables, using `examples/observation-bundle.json`. |
 | `server/FhirAutoResponderTest` | OperationOutcome responses and HTTP status. |
 | `client/FhirDataTypeCodeTemplatePluginTest` | Templates, their contexts, the snippets in Rhino, and the example library. |

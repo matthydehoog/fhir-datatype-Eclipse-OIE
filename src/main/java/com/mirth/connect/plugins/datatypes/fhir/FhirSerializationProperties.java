@@ -93,47 +93,63 @@ public class FhirSerializationProperties extends SerializationProperties {
             return;
         }
         if (properties.get("fhirVersion") != null) {
-            fhirVersion = (FhirVersion) properties.get("fhirVersion");
+            fhirVersion = toEnum(FhirVersion.class, properties.get("fhirVersion"));
         }
         if (properties.get("transformerFormat") != null) {
-            transformerFormat = (TransformerFormat) properties.get("transformerFormat");
+            transformerFormat = toEnum(TransformerFormat.class, properties.get("transformerFormat"));
         }
         if (properties.get("stripNamespaces") != null) {
-            stripNamespaces = (Boolean) properties.get("stripNamespaces");
+            stripNamespaces = toBoolean(properties.get("stripNamespaces"));
         }
         if (properties.get("outputFormat") != null) {
-            outputFormat = (OutputFormat) properties.get("outputFormat");
+            outputFormat = toEnum(OutputFormat.class, properties.get("outputFormat"));
         }
         if (properties.get("prettyPrint") != null) {
-            prettyPrint = (Boolean) properties.get("prettyPrint");
+            prettyPrint = toBoolean(properties.get("prettyPrint"));
         }
         if (properties.get("validateInbound") != null) {
-            validateInbound = (Boolean) properties.get("validateInbound");
+            validateInbound = toBoolean(properties.get("validateInbound"));
         }
         if (properties.get("validateOutbound") != null) {
-            validateOutbound = (Boolean) properties.get("validateOutbound");
+            validateOutbound = toBoolean(properties.get("validateOutbound"));
         }
         if (properties.get("invalidMessages") != null) {
-            invalidMessages = (InvalidMessages) properties.get("invalidMessages");
+            invalidMessages = toEnum(InvalidMessages.class, properties.get("invalidMessages"));
         }
         if (properties.get("failOn") != null) {
-            failOn = (FailOn) properties.get("failOn");
+            failOn = toEnum(FailOn.class, properties.get("failOn"));
         }
         if (properties.get("profiles") != null) {
-            profiles = (String) properties.get("profiles");
+            profiles = properties.get("profiles").toString();
         }
         if (properties.get("requiredProfile") != null) {
-            requiredProfile = (String) properties.get("requiredProfile");
+            requiredProfile = properties.get("requiredProfile").toString();
         }
         if (properties.get("unknownCodeSystems") != null) {
-            unknownCodeSystems = (UnknownCodeSystems) properties.get("unknownCodeSystems");
+            unknownCodeSystems = toEnum(UnknownCodeSystems.class, properties.get("unknownCodeSystems"));
         }
         if (properties.get("anyExtensionsAllowed") != null) {
-            anyExtensionsAllowed = (Boolean) properties.get("anyExtensionsAllowed");
+            anyExtensionsAllowed = toBoolean(properties.get("anyExtensionsAllowed"));
         }
         if (properties.get("terminologyServer") != null) {
-            terminologyServer = (String) properties.get("terminologyServer");
+            terminologyServer = properties.get("terminologyServer").toString();
         }
+    }
+
+    /**
+     * An option value as the enum. The Administrator passes the enum itself; the web admin's Web
+     * Support plugin passes its name as text (it only converts Booleans and Integers back).
+     */
+    static <E extends Enum<E>> E toEnum(Class<E> type, Object value) {
+        if (type.isInstance(value)) {
+            return type.cast(value);
+        }
+        return Enum.valueOf(type, value.toString().trim());
+    }
+
+    /** A Boolean option, also from "true" / "false" text. */
+    static Boolean toBoolean(Object value) {
+        return value instanceof Boolean ? (Boolean) value : Boolean.valueOf(value.toString().trim());
     }
 
     /** The options for {@link FhirEngine#validate}. */

@@ -49,6 +49,8 @@ OIE's default heap is only 256 MB (`-Xmx256m` in `conf/base_includes.vmoptions`,
 | Terminology Server | empty | Optional FHIR terminology server for codes the validator cannot check offline. |
 | Split Batch By (Batch) | Bundle Entry | *Bundle Entry*: every `Bundle.entry.resource` is one message. *JavaScript*: your own splitter. Only used when *Process Batch* is on in the source connector; see [Batch processing](#batch-processing). |
 
+**Every connector validates with its own properties.** A destination with data type FHIR validates the message again, with the settings of its own inbound properties, not those of the source. With the defaults it validates without your *Profile Packages*, so a message with `meta.profile` set fails there with *"Profile reference … has not been checked because it could not be found"*. Turn off *Validate Inbound* on the destinations: the source has already validated the message, and the message is validated only once. If a destination must validate, give it the same *Profile Packages* (and *Required Profile*) as the source.
+
 ### Connector map
 
 Inbound validation sets these variables, also when invalid messages are accepted:

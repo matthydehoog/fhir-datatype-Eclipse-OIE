@@ -40,7 +40,10 @@ public class HapiFhirEngineRetainTest {
         engine.validate(PATIENT, r4Error);
         engine.validate(PATIENT, r5);
         assertEquals(Set.of(FhirVersionEnum.R4, FhirVersionEnum.R5), engine.loadedVersions());
-        assertTrue(HapiFhirEngine.specifications().containsKey(FhirVersionEnum.R5));
+        assertTrue(engine.loadedSpecification(FhirVersionEnum.R5) != null);
+        // The engine's own lazy specification, never HAPI's static full copy.
+        assertFalse(HapiFhirEngine.hapiStaticSpecifications().containsKey(FhirVersionEnum.R4));
+        assertFalse(HapiFhirEngine.hapiStaticSpecifications().containsKey(FhirVersionEnum.R5));
 
         // Recently used validators stay, in use or not.
         engine.retainValidators(List.of(), ONE_HOUR);
@@ -49,8 +52,8 @@ public class HapiFhirEngineRetainTest {
         engine.retainValidators(List.of(r4), 0);
         assertEquals(Set.of(HapiFhirEngine.key(r4)), engine.validatorKeys());
         assertEquals(Set.of(FhirVersionEnum.R4), engine.loadedVersions());
-        assertFalse("the R5 specification is released", HapiFhirEngine.specifications().containsKey(FhirVersionEnum.R5));
-        assertTrue(HapiFhirEngine.specifications().containsKey(FhirVersionEnum.R4));
+        assertEquals("the R5 specification is released", null, engine.loadedSpecification(FhirVersionEnum.R5));
+        assertTrue(engine.loadedSpecification(FhirVersionEnum.R4) != null);
 
         // Built again on demand.
         assertTrue(engine.validate("{\"resourceType\":\"Patient\",\"gender\":\"x\"}", r5).size() > 0);
@@ -72,6 +75,6 @@ public class HapiFhirEngineRetainTest {
     /** Fails when a HAPI FHIR update renames the static map, so the specification would never be released. */
     @Test
     public void hapiStillKeepsTheSpecificationsWhereTheEngineExpectsThem() throws Exception {
-        assertTrue(HapiFhirEngine.specifications() instanceof Map);
+        assertTrue(HapiFhirEngine.hapiStaticSpecifications() instanceof Map);
     }
 }

@@ -80,7 +80,12 @@ public class FhirDataTypeCodeTemplatePluginTest {
     @Test
     public void exampleCodeTemplateLibraryIsUpToDate() throws Exception {
         ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
-        serializer.init("4.6.0");
+        try {
+            serializer.init("4.6.0");
+        } catch (Exception e) {
+            // another test in this JVM (FhirResourceTypesTest) initialized it already; the order of
+            // the test classes depends on the file system, so this test must not run first
+        }
         String xml = sortContextTypes(serializer.serialize(FhirDataTypeCodeTemplatePlugin.fhirLibrary()).replace("\r\n", "\n"));
 
         Path file = Paths.get("examples", "fhir-functions-code-templates.xml");

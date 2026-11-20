@@ -399,7 +399,7 @@ Keep the pure-Java paths (`FhirXml`, `FhirJson`) faithful: they must not reorder
 6. **Release.** Either push a tag, and CI builds, smoke-tests and creates the release with the zip and a `.sha256` file and generated notes (edit the notes afterwards):
 
    ```bash
-   git tag v1.6.1 origin/main && git push origin v1.6.1
+   git tag v1.6.2 origin/main && git push origin v1.6.2
    ```
 
    Or create the release by hand with the zip you tested and its SHA-256 in the notes. CI then builds the tag too, but `release.sh` leaves a release that already has the zip alone, because a new build is a different file with another checksum:

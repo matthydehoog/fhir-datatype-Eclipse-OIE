@@ -89,6 +89,20 @@ The result is `target/datatype-fhir-<version>.zip`, about 117 MB. Always use `cl
 
 The Administrator can therefore still run on Java 11, while the server, which OIE ships with Java 17, runs the engine.
 
+### Signing
+
+Some Administrator launchers refuse extension jars that are not signed, so releases sign the shared, server and client jars (`maven-jarsigner-plugin`, just before the zip is made) with the X Connections code-signing key: a self-signed certificate, timestamped by DigiCert so the signature stays valid after the certificate expires. The engine jar and the libraries in `lib/` stay on the server and are not signed.
+
+Signing is off unless a keystore is given:
+
+```bash
+mvn clean package -Dsign.keystore=/path/to/codesign.p12 -Dsign.storepass=...
+```
+
+or with `sign.skip=false`, `sign.keystore` and `sign.storepass` in a profile of `~/.m2/settings.xml`. The alias is `x-connections` (`-Dsign.alias` to change it). The build verifies the signatures and fails if one is missing. Check a zip by hand with `jarsigner -verify -certs datatype-fhir-client.jar`.
+
+On GitHub the key comes from the repository secrets `SIGNING_KEYSTORE_BASE64` (the PKCS12 file in base64) and `SIGNING_STOREPASS`. Pull requests from forks get no secrets and build unsigned; a version tag without the secrets fails, so every release is signed. The keystore itself is never committed.
+
 ### What is in the zip
 
 `maven-jar-plugin` makes four jars out of one source tree, by package; `assembly.xml` puts them in the zip:

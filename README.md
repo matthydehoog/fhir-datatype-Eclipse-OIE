@@ -207,6 +207,9 @@ msg.identifier = (msg.identifier || []).concat([{ system: 'http://example.org/mr
 
 ### In scripts
 
+<img width="918" height="615" alt="image" src="https://github.com/user-attachments/assets/eb2b330c-db00-42c3-b128-cf673f2a987e" />
+
+
 `FhirTools` validates and converts in any script, for example an HTTP response:
 
 ```javascript

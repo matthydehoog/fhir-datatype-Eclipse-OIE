@@ -16,6 +16,10 @@ FHIR R4 (4.0.1), R4B (4.3.0) and R5 (5.0.0) are supported, chosen per connector 
 <img width="1641" height="722" alt="image" src="https://github.com/user-attachments/assets/4543f108-2e8b-4dec-bb63-bb3052fd17c7" />
 
 
+## Wiki
+
+The [project wiki](https://github.com/matthydehoog/fhir-datatype-Eclipse-OIE/wiki) has the same information in short pages per topic: installation and memory, properties, validation and profiles, the transformer and scripts, code templates, batch processing, responses, security and troubleshooting.
+
 ## Online course
 
 [FHIR Data Type for Eclipse OIE](https://eclipse-oie.moodiy.cloud/course/view.php?id=9) on the Academy for Eclipse OIE is a free course on this plugin: installation and properties, validation, FHIR in the transformer and scripts, and 17 hands-on exercises with a test channel and fictitious messages, ending with a final test. Create an account on the site and click *Enrol me* on the course page.

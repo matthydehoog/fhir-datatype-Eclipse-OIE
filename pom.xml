@@ -19,7 +19,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Must match the engine you deploy to. -->
     <oie.version>4.6.0</oie.version>
-    <hapi.version>8.12.1</hapi.version>
+    <hapi.version>9.0.0</hapi.version>
     <!-- The engine's Log4j (server-lib/log4j). -->
     <log4j.version>2.25.3</log4j.version>
     <!--

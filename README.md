@@ -13,7 +13,7 @@ An HL7 FHIR data type for [Eclipse Open Integration Engine](https://github.com/O
 
 FHIR R4 (4.0.1), R4B (4.3.0) and R5 (5.0.0) are supported, chosen per connector with *FHIR Version*. Channels saved with an earlier version of the plugin keep R4.
 
-<img width="1641" height="722" alt="image" src="https://github.com/user-attachments/assets/4543f108-2e8b-4dec-bb63-bb3052fd17c7" />
+<img width="1641" alt="Set Data Types: FHIR as the data type of the source and destinations" src="https://github.com/user-attachments/assets/4543f108-2e8b-4dec-bb63-bb3052fd17c7" />
 
 
 ## Wiki
@@ -24,7 +24,7 @@ The [project wiki](https://github.com/matthydehoog/fhir-datatype-Eclipse-OIE/wik
 
 [FHIR Data Type for Eclipse OIE](https://eclipse-oie.moodiy.cloud/course/view.php?id=9) on the Academy for Eclipse OIE is a free course on this plugin: installation and properties, validation, FHIR in the transformer and scripts, and 17 hands-on exercises with a test channel and fictitious messages, ending with a final test. Create an account on the site and click *Enrol me* on the course page.
 
-<img width="1200" height="675" alt="course-fhir-card" src="https://github.com/user-attachments/assets/ca8c113a-bcf3-44f0-8e9b-481e5828b860" />
+<img width="1200" alt="Course card: FHIR Data Type for Eclipse OIE" src="https://github.com/user-attachments/assets/ca8c113a-bcf3-44f0-8e9b-481e5828b860" />
 
 
 ## Installation
@@ -229,7 +229,7 @@ msg.identifier = (msg.identifier || []).concat([{ system: 'http://example.org/mr
 
 ### In scripts
 
-<img width="918" height="615" alt="image" src="https://github.com/user-attachments/assets/eb2b330c-db00-42c3-b128-cf673f2a987e" />
+<img width="918" alt="The FHIR Functions library with its 16 templates" src="https://github.com/user-attachments/assets/eb2b330c-db00-42c3-b128-cf673f2a987e" />
 
 
 `FhirTools` validates and converts in any script, for example an HTTP response:

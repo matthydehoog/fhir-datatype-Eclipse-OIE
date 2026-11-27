@@ -62,6 +62,10 @@ Since 1.6.2 the plugin's jars are signed with the X Connections code-signing cer
 
 ## Properties
 
+Set the data type to **FHIR** under *Set Data Types* in the channel's Summary tab. Each property is explained under its field:
+
+<img src="docs/images/fhir-set-data-types.png" width="800" alt="The Set Data Types dialog in the Web Administrator, with FHIR as inbound and outbound data type and the FHIR properties of the source connector">
+
 | Property | Default | What it does |
 | --- | --- | --- |
 | FHIR Version | R4 | The FHIR version of the messages: R4, R4B or R5. Used for validation and for converting between JSON and XML; profile packages must be for the same version. |
@@ -95,6 +99,10 @@ Inbound validation sets these variables, also when invalid messages are accepted
 | `fhirOperationOutcome` | the issues as a FHIR `OperationOutcome` resource (JSON), ready to return to the sender |
 | `mirth_type` | resource type, e.g. `Patient` or `Bundle` |
 | `mirth_version` | the *FHIR Version*: `R4`, `R4B` or `R5` |
+
+The variables in the message browser's Mappings tab, for a rejected Patient with four issues:
+
+<img src="docs/images/fhir-message-variables.png" width="800" alt="The Mappings tab of a rejected message, with fhirIssueCount, fhirIssues and fhirOperationOutcome in the connector map">
 
 For example, a source filter that only lets valid messages through, with *Invalid Messages* on *Accept*:
 
@@ -164,6 +172,10 @@ The HTTP status and content type are put in the channel map and the source map (
 
 Without these, the listener answers `500` for a rejected message instead of `400`, still with the OperationOutcome as the body.
 
+The message browser shows the response that went back, in the Response tab of the message:
+
+<img src="docs/images/fhir-message-operationoutcome.png" width="800" alt="The Response tab of a message that an HTTP Listener rejected: status ERROR and the OperationOutcome sent back to the client">
+
 To build your own response, use `$('fhirOperationOutcome')`, which is filled whenever inbound validation runs.
 
 ## Profiles and packages
@@ -179,6 +191,8 @@ A resource is validated against the profiles in its `meta.profile`. Set *Require
 
 Profiles are loaded once per combination of settings and kept in memory; restart the channel after changing the files.
 
+<img src="docs/images/fhir-properties-profiles.png" width="800" alt="Profile Packages, Required Profile, Unknown Code Systems, Allow Unknown Extensions and Terminology Server in the Set Data Types dialog">
+
 ## The transformer
 
 With *Strip Namespaces* on, the transformer works on plain FHIR XML:
@@ -192,6 +206,10 @@ msg.appendChild(<birthDate value="1980-01-01"/>);
 ```
 
 You don't have to mind the FHIR element order: after the transformer the FHIR engine writes the message again, JSON or XML, in the order of the specification. So `birthDate` ends up after `gender`, wherever you appended it. An element that is not in the specification is refused with an error instead of being dropped.
+
+The Message Trees tab shows the same: here a JSON Patient as inbound template, as FHIR XML with every value in `@value`:
+
+<img src="docs/images/fhir-message-tree.png" width="800" alt="The Message Trees tab of a source transformer with a JSON Patient as inbound template, shown as FHIR XML with @value attributes">
 
 ### JSON in the transformer
 
@@ -232,6 +250,8 @@ var json = FhirTools.toJson(msg.toString()); // transformer XML to JSON
 ### Reference list
 
 The script editors' reference list has a **FHIR Functions** category with 16 drag-and-drop snippets: `FhirTools` (validate, also against a profile; walk through the issues; convert XML to JSON and back), the inbound validation variables (`fhirValid`, `fhirIssueCount`, `fhirIssues`, `fhirOperationOutcome`) with a filter rule for invalid messages, and E4X patterns for FHIR XML. In the web administrator, import [`examples/fhir-functions-code-templates.xml`](examples/fhir-functions-code-templates.xml) to get them.
+
+<img src="docs/images/fhir-webadmin-reference.png" width="800" alt="The Reference tab of a transformer step in the Web Administrator, with Category FHIR Functions and its templates">
 
 See [docs/code-templates.md](docs/code-templates.md) for how to use them, what each template does and what to adapt.
 

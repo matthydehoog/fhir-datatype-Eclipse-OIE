@@ -73,6 +73,14 @@ The web administrator's reference list has no way yet for plugins to add a categ
 2. Select [`examples/fhir-functions-code-templates.xml`](../examples/fhir-functions-code-templates.xml).
 3. In a script editor's **Reference** panel, choose the category **FHIR Functions**.
 
+The imported library on the Code Templates page:
+
+<img src="images/fhir-code-templates.png" width="800" alt="The Code Templates page of the Web Administrator with the library FHIR Functions and the template Validate FHIR resource opened">
+
+And its templates in the Reference panel of a transformer step:
+
+<img src="images/fhir-webadmin-reference.png" width="800" alt="The Reference tab of a transformer step in the Web Administrator, with Category FHIR Functions and its templates">
+
 The library is set to include all channels, because the web administrator only lists libraries that apply to the channel; its drag-and-drop templates still add nothing to the scripts. You don't need it in the Swing Administrator, where it would show the templates a second time under *User Defined Code*.
 
 ## For developers
